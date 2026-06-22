@@ -1,0 +1,19 @@
+# PostgreSQL for mysimconnect — host port 59999 → container 5432
+# Usage: docker compose -f docker-compose.postgres.yml up -d
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mysimconnect
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpass
+      POSTGRES_DB: pgdb
+    ports:
+      - "59999:5432"
+    volumes:
+      - mysimconnect_pgdata:/var/lib/postgresql/data
+
+volumes:
+  mysimconnect_pgdata:

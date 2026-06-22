@@ -1,0 +1,1708 @@
+name: CRM
+description: |-
+
+
+
+  Register and list device-synced call logs scoped to a user.
+
+
+
+  Register endpoints are open (no Bearer or sync token). Only `user_id` is required.
+
+  Fetch (`POST /get`) accepts sync token or Bearer token.
+
+  Legacy GET list requires `Authorization: Bearer <token>`.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/call-logs/get
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+
+
+        Register and list device-synced call logs scoped to a user.
+
+
+
+        Register endpoints are open (no Bearer or sync token). Only `user_id` is required.
+
+        Fetch (`POST /get`) accepts sync token or Bearer token.
+
+        Legacy GET list requires `Authorization: Bearer <token>`.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Fetch call logs (POST).'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      mine:
+        custom: []
+        name: mine
+        description: "When true, only this user's logs. When false, all logs for the user's tenant."
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      limit:
+        custom: []
+        name: limit
+        description: 'Optional page size 1–500.'
+        required: false
+        example: 50
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      cursor:
+        custom: []
+        name: cursor
+        description: 'Optional pagination cursor from a previous response.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      date_from:
+        custom: []
+        name: date_from
+        description: 'Optional start date (YYYY-MM-DD or ISO-8601). Inclusive.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      date_to:
+        custom: []
+        name: date_to
+        description: 'Optional end date (YYYY-MM-DD or ISO-8601). Inclusive.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Context user.'
+        required: true
+        example: 123
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      mine: true
+      limit: 50
+      cursor: architecto
+      date_from: architecto
+      date_to: architecto
+      user_id: 123
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/call-logs/register/bulk
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+
+
+        Register and list device-synced call logs scoped to a user.
+
+
+
+        Register endpoints are open (no Bearer or sync token). Only `user_id` is required.
+
+        Fetch (`POST /get`) accepts sync token or Bearer token.
+
+        Legacy GET list requires `Authorization: Bearer <token>`.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Register multiple call logs for one user.'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      calls:
+        custom: []
+        name: calls
+        description: 'Must have at least 1 items. Must not have more than 500 items.'
+        required: true
+        example: []
+        type: object
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      calls: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/call-logs/register
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+
+
+        Register and list device-synced call logs scoped to a user.
+
+
+
+        Register endpoints are open (no Bearer or sync token). Only `user_id` is required.
+
+        Fetch (`POST /get`) accepts sync token or Bearer token.
+
+        Legacy GET list requires `Authorization: Bearer <token>`.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Register a single call log.'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/call-logs
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+
+
+        Register and list device-synced call logs scoped to a user.
+
+
+
+        Register endpoints are open (no Bearer or sync token). Only `user_id` is required.
+
+        Fetch (`POST /get`) accepts sync token or Bearer token.
+
+        Legacy GET list requires `Authorization: Bearer <token>`.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List call logs for a user (cursor pagination).'
+      description: ''
+      authenticated: false
+      deprecated: false
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      limit:
+        custom: []
+        name: limit
+        description: 'Must be at least 1. Must not be greater than 500.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      cursor:
+        custom: []
+        name: cursor
+        description: 'Must not be greater than 512 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      limit: 1
+      cursor: 'n'
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/contacts
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List contacts'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      limit:
+        custom: []
+        name: limit
+        description: 'Optional. Page size 1–100.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      fields:
+        custom: []
+        name: fields
+        description: 'Optional. **Zoho only:** comma-separated Zoho Contacts API field names (max 50). Defaults to fields required for MysimConnect’s normalized contact shape.'
+        required: false
+        example: 'First_Name,Last_Name,Email'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+      limit: 16
+      fields: 'First_Name,Last_Name,Email'
+    bodyParameters:
+      limit:
+        custom: []
+        name: limit
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      limit: 1
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/contact
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Retrieve a single contact with call and note stats.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get contact'
+      description: 'Returns the normalized contact plus call stats for the authenticated user.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'optional CRM contact id. Required when `phone` is omitted.'
+        required: false
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      phone:
+        custom: []
+        name: phone
+        description: 'optional Contact phone number. Required when `contactId` is omitted.'
+        required: false
+        example: '+919910023290'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+      phone: '+919910023290'
+    bodyParameters:
+      contactId:
+        custom: []
+        name: contactId
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contact:
+        custom: []
+        name: contact
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contact_id:
+        custom: []
+        name: contact_id
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contactid:
+        custom: []
+        name: contactid
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      phone:
+        custom: []
+        name: phone
+        description: 'Must not be greater than 64 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      contactId: architecto
+      contact: architecto
+      contact_id: architecto
+      contactid: architecto
+      phone: 'n'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"message":"OK","data":{"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com"},"calls":{"total_dialed":4,"total_talk_time":620,"total_received":3,"total_notes":2}}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/search
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Search contacts'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      query:
+        custom: []
+        name: query
+        description: Optional.
+        required: false
+        example: jane@example.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      pageLimit:
+        custom: []
+        name: pageLimit
+        description: Optional.
+        required: false
+        example: 20
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      fields:
+        custom: []
+        name: fields
+        description: 'Optional. **Zoho only:** comma-separated Contacts field API names forwarded to `/Contacts/search`.'
+        required: false
+        example: 'First_Name,Last_Name,Email'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      query: jane@example.com
+      pageLimit: 20
+      user_id: 1
+      fields: 'First_Name,Last_Name,Email'
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/users
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List users'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/tags
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List Tags'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/add/tags
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Add, update, or remove contact tags'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      contactid:
+        custom: []
+        name: contactid
+        description: 'CRM contact id from list/search (GoHighLevel or Zoho).'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      tags:
+        custom: []
+        name: tags
+        description: 'Tag ids for the contact tag update.'
+        required: true
+        example:
+          - tag_id_1
+          - tag_id_2
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      contactid: 550e8400-e29b-41d4-a716-446655440000
+      tags:
+        - tag_id_1
+        - tag_id_2
+      user_id: 1
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"tags":["sent whatsapp","friendly","hni"],"message":"tags updated","status":true}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/contacts/notes/list
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List contact notes'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search (GoHighLevel or Zoho).'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+    bodyParameters:
+      contactId:
+        custom: []
+        name: contactId
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contact:
+        custom: []
+        name: contact
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contact_id:
+        custom: []
+        name: contact_id
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      contactid:
+        custom: []
+        name: contactid
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      contactId: architecto
+      contact: architecto
+      contact_id: architecto
+      contactid: architecto
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"status":true,"notes":[{"id":"ZuYmxcy8lNxQyFEJWurd","body":"Call: INCOMING\nNumber: +919910023290\nContact: Ankur Wadhawan\nDuration: 18s\nAt: 2026-05-06 02:46:31","attachments":[],"title":"","user_name":"Excellanto Developers","userId":"TlWn93srwc6WyxUYy98a","contactId":"8YoUU2pqEmnI8AoTSLhR","dateAdded":"2026-05-05T21:16:56.211Z","dateUpdated":""}],"meta":{}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/crm/contacts/notes/summaries-by-phone
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Retrieve AI-generated note summaries for a contact identified by phone number.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List contact note summaries by phone'
+      description: |-
+        Returns concise summaries (from voice notes or parsed note bodies) with date and time.
+        Works with MyCrmSync, GoHighLevel, and Zoho tenants.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      phone:
+        custom: []
+        name: phone
+        description: 'Contact phone number (any common format).'
+        required: true
+        example: '+919910023290'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+      phone: '+919910023290'
+    bodyParameters:
+      phone:
+        custom: []
+        name: phone
+        description: 'Must not be greater than 64 characters.'
+        required: true
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      phone: b
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"message":"OK","data":{"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com"},"summaries":[{"id":"note-id","summary":"Prospect wants a call Friday at 11:30 AM.","date":"2026-05-06","time":"02:46:31","datetime":"2026-05-06T02:46:31+00:00"}],"meta":{"total":1}}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/notes/add
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create contact note'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search (GoHighLevel or Zoho).'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      body:
+        custom: []
+        name: body
+        description: 'Note text.'
+        required: true
+        example: 'Prospect wanted to schedule call on Friday at 11:30 AM'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      urls:
+        custom: []
+        name: urls
+        description: 'optional Attachment URLs.'
+        required: false
+        example:
+          - 'https://your-s3-bucket.com/uploads/audio_brief.mp3'
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification. Must be mapped to an integrated CRM user (`intsysuser`); that id is sent to GoHighLevel (`userId`) or Zoho (`Owner.id`).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+      body: 'Prospect wanted to schedule call on Friday at 11:30 AM'
+      urls:
+        - 'https://your-s3-bucket.com/uploads/audio_brief.mp3'
+      user_id: 1
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"status":true,"notes":[{"id":"ZuYmxcy8lNxQyFEJWurd","body":"Prospect wanted to schedule call on Friday at 11:30 AM","attachments":["https://your-s3-bucket.com/uploads/audio_brief.mp3"],"title":"","user_name":"Excellanto Developers","userId":"1303041000000453001","contactId":"1303041000000523005","dateAdded":"2026-05-05T21:16:56.211Z","dateUpdated":""}]}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/notes/update
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update contact note'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      noteid:
+        custom: []
+        name: noteid
+        description: 'CRM note id.'
+        required: true
+        example: f47ac10b-58cc-4372-a567-0e02b2c3d479
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search (GoHighLevel or Zoho).'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      body:
+        custom: []
+        name: body
+        description: 'Note text.'
+        required: true
+        example: 'Updated text.'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      urls:
+        custom: []
+        name: urls
+        description: 'Attachment URLs.'
+        required: true
+        example:
+          - 'https://your-s3-bucket.com/uploads/audio_brief.mp3'
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      noteid: f47ac10b-58cc-4372-a567-0e02b2c3d479
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+      user_id: 1
+      body: 'Updated text.'
+      urls:
+        - 'https://your-s3-bucket.com/uploads/audio_brief.mp3'
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/notes/delete
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete contact note'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      noteid:
+        custom: []
+        name: noteid
+        description: 'CRM note id. Also accepts `noteId`, `note_id`, or `id`.'
+        required: true
+        example: f47ac10b-58cc-4372-a567-0e02b2c3d479
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Local MysimConnect user id returned by OTP verification.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search (GoHighLevel or Zoho). Also accepts `contact`, `contact_id`, or `contactid`.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      noteid: f47ac10b-58cc-4372-a567-0e02b2c3d479
+      user_id: 1
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/voice-notes/process
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Process recorded voice notes: upload to storage, transcribe, summarize, and return a CRM-ready note body.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Process voice note'
+      description: |-
+        Accepts recorded audio, uploads to storage, transcribes, summarizes, and returns a ready-to-paste CRM note body.
+        Use `POST /api/crm/media/process-batch` to create the CRM note with attachments.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      contact_id:
+        custom: []
+        name: contact_id
+        description: 'CRM contact id.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      audio:
+        custom: []
+        name: audio
+        description: 'Recorded audio (AAC/MPEG-4 or other audio/*, max ~50 MB).'
+        required: true
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      existing_note_text:
+        custom: []
+        name: existing_note_text
+        description: 'optional Text already in the note box; included in the returned note_body preview.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      contact_id: 550e8400-e29b-41d4-a716-446655440000
+      existing_note_text: architecto
+      user_id: 1
+    fileParameters:
+      audio: null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/call-recordings/transcribe
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Transcribe call recordings and return transcription, summary, and sentiment analysis.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Transcribe call recording'
+      description: 'Accepts a call audio file, transcribes it, summarizes the conversation, and analyzes sentiment.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      audio:
+        custom: []
+        name: audio
+        description: 'Call recording (mp3, m4a, wav, ogg, etc.; max ~50 MB).'
+        required: true
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      call_log_id:
+        custom: []
+        name: call_log_id
+        description: 'optional UUID of an existing call log to link this recording to.'
+        required: false
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      contact_id:
+        custom: []
+        name: contact_id
+        description: 'optional CRM contact id for context.'
+        required: false
+        example: '1303041000000523005'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      language:
+        custom: []
+        name: language
+        description: 'optional ISO-639-1 language hint for transcription (e.g. en, es).'
+        required: false
+        example: en
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      store_recording:
+        custom: []
+        name: store_recording
+        description: 'optional Persist the audio file to storage (default true).'
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      call_log_id: 550e8400-e29b-41d4-a716-446655440000
+      contact_id: '1303041000000523005'
+      language: en
+      store_recording: true
+      user_id: 1
+    fileParameters:
+      audio: null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/crm/call-recordings/{callRecordingId}'
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Transcribe call recordings and return transcription, summary, and sentiment analysis.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get call recording'
+      description: 'Retrieve a previously processed call recording by id.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      callRecordingId:
+        custom: []
+        name: callRecordingId
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      callRecordingId: architecto
+    queryParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      user_id: 1
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contact-files/process
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Upload a single contact file (document or image) to storage and return short and long URLs.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Process contact file'
+      description: |-
+        Accepts a document or image file, uploads it to storage, and returns short and long URLs.
+        Use `POST /api/crm/media/process-batch` to create the CRM note.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      contact_id:
+        custom: []
+        name: contact_id
+        description: 'CRM contact id.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      file:
+        custom: []
+        name: file
+        description: 'Document or image (PDF, DOC, DOCX, or image/*, max ~50 MB).'
+        required: true
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      contact_id: 550e8400-e29b-41d4-a716-446655440000
+      user_id: 1
+    fileParameters:
+      file: null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/media/process-batch
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Batch upload contact media and create a single CRM note.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Process contact media batch'
+      description: |-
+        Uploads multiple files (and/or reuses prior voice_note_ids), runs AI on audio files,
+        builds one combined note body, and creates a single CRM contact note.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      contact_id:
+        custom: []
+        name: contact_id
+        description: 'CRM contact id.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      files:
+        custom: []
+        name: files
+        description: 'optional New files to upload (audio, PDF, DOC, DOCX, images). At least one file or voice_note_id is required.'
+        required: false
+        example:
+          - null
+        type: 'file[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      voice_note_ids:
+        custom: []
+        name: voice_note_ids
+        description: 'optional Existing voice_note ids from prior uploads for this contact.'
+        required: false
+        example:
+          - 550e8400-e29b-41d4-a716-446655440000
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      existing_note_text:
+        custom: []
+        name: existing_note_text
+        description: 'optional Text already in the note box; prepended to the CRM note.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      contact_id: 550e8400-e29b-41d4-a716-446655440000
+      voice_note_ids:
+        - 550e8400-e29b-41d4-a716-446655440000
+      existing_note_text: architecto
+      user_id: 1
+    fileParameters:
+      files:
+        - null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

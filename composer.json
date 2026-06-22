@@ -1,0 +1,70 @@
+{
+	"name": "sibrama/admin-boilerplate",
+	"description": "Laravel 11 + Vue 3 + InertiaJS admin boilerplate with roles & permissions.",
+	"type": "project",
+	"license": "MIT",
+	"require": {
+		"php": "^8.2",
+		"laravel/framework": "^11.0",
+		"laravel/tinker": "^2.9",
+		"inertiajs/inertia-laravel": "^2.0",
+		"spatie/laravel-permission": "^6.0",
+		"laravel/breeze": "^2.0",
+		"laravel/sanctum": "^4.0",
+		"tightenco/ziggy": "^2.0",
+		"smalot/pdfparser": "^2.12",
+		"phpoffice/phpword": "^1.4",
+		"openai-php/client": "^0.19.0",
+		"mpdf/mpdf": "^8.2",
+		"league/flysystem-aws-s3-v3": "3.0",
+		"dompdf/dompdf": "^3.1",
+		"webklex/laravel-imap": "^6.2",
+		"knuckleswtf/scribe": "^5.10"
+	},
+	"require-dev": {
+		"fakerphp/faker": "^1.23",
+		"laravel/pint": "^1.13",
+		"phpunit/phpunit": "^11.0",
+		"mockery/mockery": "^1.6",
+		"kitloong/laravel-migrations-generator": "^7.3"
+	},
+	"autoload": {
+		"psr-4": {
+			"App\\": "app/"
+		},
+		"files": [
+			"app/helpers.php"
+		]
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Tests\\": "tests/",
+			"Database\\Seeders\\": "database/seeders/",
+			"Database\\Factories\\": "database/factories/"
+		}
+	},
+	"scripts": {
+		"docs": "@php artisan scribe:generate",
+		"post-autoload-dump": [
+			"Illuminate\\Foundation\\ComposerScripts::postAutoloadDump"
+		],
+		"post-root-package-install": [
+			"@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+		],
+		"post-create-project-cmd": [
+			"@php artisan key:generate --ansi"
+		]
+	},
+	"extra": {
+		"laravel": {
+			"dont-discover": []
+		}
+	},
+	"minimum-stability": "stable",
+	"prefer-stability": true,
+	"config": {
+		"allow-plugins": {
+			"php-http/discovery": true
+		}
+	}
+}

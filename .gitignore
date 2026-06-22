@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+/vendor
+
+# Laravel
+/.env
+/.env.backup
+/.env.production
+/storage/*.key
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/logs/.gitkeep
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+
+# Build & Assets
+/public/build
+/public/hot
+/.vite
+/dist
+
+# Testing
+/.phpunit.result.cache
+/coverage
+
+# IDE & Editors
+/.idea
+/.vscode
+/.cursor
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.directory
+
+# PHP
+.php_cs.cache
+.phpunit.cache
