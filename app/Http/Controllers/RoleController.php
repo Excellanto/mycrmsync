@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
+use App\Support\ApplicationCache;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -215,6 +216,7 @@ class RoleController extends Controller
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        ApplicationCache::bumpUserAuthVersion();
 
         return back()->with('success', 'Role created.');
     }
@@ -232,6 +234,7 @@ class RoleController extends Controller
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        ApplicationCache::bumpUserAuthVersion();
 
         return back()->with('success', 'Role updated.');
     }
@@ -251,6 +254,7 @@ class RoleController extends Controller
         $role->syncPermissions($data['permissions'] ?? []);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        ApplicationCache::bumpUserAuthVersion();
 
         return back()->with('success', 'Role permissions updated.');
     }

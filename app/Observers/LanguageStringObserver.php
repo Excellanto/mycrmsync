@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\LanguageString;
 use App\Services\ActivityLogService;
+use App\Support\ApplicationCache;
 
 class LanguageStringObserver
 {
@@ -20,6 +21,7 @@ class LanguageStringObserver
     public function created(LanguageString $languageString): void
     {
         $this->activityLogService->logCreated('languages', $languageString);
+        ApplicationCache::forgetTranslations((string) $languageString->lang);
     }
 
     /**
@@ -30,6 +32,10 @@ class LanguageStringObserver
         if ($languageString->wasChanged() && count($languageString->getChanges()) > 0) {
             $this->activityLogService->logUpdated('languages', $languageString);
         }
+
+        if ($languageString->wasChanged(['lang', 'file', 'key', 'value'])) {
+            ApplicationCache::forgetTranslations((string) $languageString->lang);
+        }
     }
 
     /**
@@ -38,6 +44,7 @@ class LanguageStringObserver
     public function deleted(LanguageString $languageString): void
     {
         $this->activityLogService->logDeleted('languages', $languageString);
+        ApplicationCache::forgetTranslations((string) $languageString->lang);
     }
 }
 

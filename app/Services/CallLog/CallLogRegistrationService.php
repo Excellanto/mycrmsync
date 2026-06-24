@@ -3,6 +3,8 @@
 namespace App\Services\CallLog;
 
 use App\Models\CallLog;
+use App\Models\User;
+use App\Support\ApplicationCache;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
@@ -48,6 +50,8 @@ final class CallLogRegistrationService
 
             throw $e;
         }
+
+        $this->forgetDashboardCachesForUser($userId);
 
         return $this->resultPayload($callLog, true);
     }
@@ -247,6 +251,19 @@ final class CallLogRegistrationService
         $sqlState = (string) ($e->errorInfo[0] ?? '');
 
         return in_array($sqlState, ['23505', '23000'], true);
+    }
+
+    private function forgetDashboardCachesForUser(string $userId): void
+    {
+        $tenantId = User::query()
+            ->whereKey(is_numeric($userId) ? (int) $userId : $userId)
+            ->value('tenant_id');
+
+        if ($tenantId !== null) {
+            ApplicationCache::forgetDashboardForTenant((int) $tenantId);
+        }
+
+        ApplicationCache::bumpDashboardMaster();
     }
 
     /**

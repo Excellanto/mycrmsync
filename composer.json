@@ -26,7 +26,8 @@
 		"laravel/pint": "^1.13",
 		"phpunit/phpunit": "^11.0",
 		"mockery/mockery": "^1.6",
-		"kitloong/laravel-migrations-generator": "^7.3"
+		"kitloong/laravel-migrations-generator": "^7.3",
+		"laravel/telescope": "^5.20"
 	},
 	"autoload": {
 		"psr-4": {
