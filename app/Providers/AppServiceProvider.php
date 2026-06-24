@@ -3,14 +3,22 @@
 namespace App\Providers;
 
 use App\Listeners\LogAuthenticationEvents;
+use App\Models\CallRecording;
+use App\Models\Contact;
+use App\Models\Integration;
 use App\Models\LanguageString;
 use App\Models\Role;
 use App\Models\SiteSetting;
+use App\Models\Tenant;
 use App\Models\User;
+use App\Observers\CallRecordingObserver;
+use App\Observers\ContactObserver;
+use App\Observers\IntegrationObserver;
 use App\Observers\LanguageStringObserver;
 use App\Observers\PermissionObserver;
 use App\Observers\RoleObserver;
 use App\Observers\SiteSettingObserver;
+use App\Observers\TenantObserver;
 use App\Observers\UserObserver;
 use App\Scribe\WindowsSafeWriter;
 // AiSettingsService removed
@@ -46,6 +54,10 @@ class AppServiceProvider extends ServiceProvider
         Permission::observe(PermissionObserver::class);
         SiteSetting::observe(SiteSettingObserver::class);
         LanguageString::observe(LanguageStringObserver::class);
+        Contact::observe(ContactObserver::class);
+        Integration::observe(IntegrationObserver::class);
+        CallRecording::observe(CallRecordingObserver::class);
+        Tenant::observe(TenantObserver::class);
 
         // Register authentication event listeners
         Event::listen(Login::class, [LogAuthenticationEvents::class, 'handleLogin']);

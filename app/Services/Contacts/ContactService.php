@@ -6,6 +6,7 @@ use App\Models\Contact;
 use App\Models\ContactNote;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\ApplicationCache;
 use App\Support\PhoneNormalizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -181,36 +182,38 @@ final class ContactService
      */
     public function listDistinctTags(int $tenantId): array
     {
-        $tags = Contact::query()
-            ->forTenantId($tenantId)
-            ->whereNotNull('tags')
-            ->pluck('tags');
+        return ApplicationCache::rememberContactTags($tenantId, function () use ($tenantId): array {
+            $tags = Contact::query()
+                ->forTenantId($tenantId)
+                ->whereNotNull('tags')
+                ->pluck('tags');
 
-        $unique = [];
+            $unique = [];
 
-        foreach ($tags as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
+            foreach ($tags as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
 
-            foreach ($row as $tag) {
-                $label = trim((string) $tag);
+                foreach ($row as $tag) {
+                    $label = trim((string) $tag);
 
-                if ($label !== '') {
-                    $unique[$label] = true;
+                    if ($label !== '') {
+                        $unique[$label] = true;
+                    }
                 }
             }
-        }
 
-        $out = [];
+            $out = [];
 
-        foreach (array_keys($unique) as $label) {
-            $out[] = ['id' => $label, 'name' => $label];
-        }
+            foreach (array_keys($unique) as $label) {
+                $out[] = ['id' => $label, 'name' => $label];
+            }
 
-        usort($out, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+            usort($out, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
 
-        return $out;
+            return $out;
+        });
     }
 
     public function assertMyCrmSyncTenant(Tenant $tenant): void

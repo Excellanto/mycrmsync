@@ -8,6 +8,7 @@ use App\Models\Integration;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\ApplicationCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -168,6 +169,10 @@ class TenantController extends Controller
         }
 
         $tenant->update($attributes);
+
+        ApplicationCache::forgetPlatformHasMyCrmSyncTenant();
+        ApplicationCache::forgetDashboardForTenant((int) $tenant->id);
+        ApplicationCache::forgetAuthForTenantUsers((int) $tenant->id);
 
         $editTab = $request->input('edit_tab');
         $url = route('admin.tenants.edit', $tenant);

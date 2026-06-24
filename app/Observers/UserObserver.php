@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Support\ApplicationCache;
 
 class UserObserver
 {
@@ -29,6 +30,10 @@ class UserObserver
     {
         if ($user->wasChanged() && count($user->getChanges()) > 0) {
             $this->activityLogService->logUpdated('users', $user);
+        }
+
+        if ($user->wasChanged(['name', 'email', 'tenant_id'])) {
+            ApplicationCache::forgetUserAuth((int) $user->id);
         }
     }
 

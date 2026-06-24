@@ -7,6 +7,7 @@ use App\Integrations\FetchTenantIntegrationCrmUsers;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\ApplicationCache;
 use App\Support\RoleAssignmentRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
@@ -197,6 +199,8 @@ class UserController extends Controller
             $user->syncPermissions($data['permissions']);
         }
 
+        $this->invalidateUserAuthCache($user);
+
         return back()->with('success', 'User created.');
     }
 
@@ -240,6 +244,8 @@ class UserController extends Controller
             $user->syncPermissions($data['permissions']);
         }
 
+        $this->invalidateUserAuthCache($user);
+
         return back()->with('success', 'User updated.');
     }
 
@@ -259,6 +265,8 @@ class UserController extends Controller
         ]);
         $roleModels = $this->validatedAssignableRoles(auth()->user(), $data['roles'] ?? []);
         $user->syncRoles($roleModels->all());
+
+        $this->invalidateUserAuthCache($user);
 
         return back()->with('success', 'Roles updated.');
     }
@@ -494,5 +502,11 @@ class UserController extends Controller
 
             $model->setAttribute('mapped_user_display', $display);
         }
+    }
+
+    private function invalidateUserAuthCache(User $user): void
+    {
+        ApplicationCache::forgetUserAuth((int) $user->id);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

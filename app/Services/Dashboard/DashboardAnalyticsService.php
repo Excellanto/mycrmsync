@@ -9,6 +9,7 @@ use App\Models\CallRecording;
 use App\Models\Contact;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\ApplicationCache;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -23,17 +24,32 @@ final class DashboardAnalyticsService
     public function build(User $user, string $period): array
     {
         $period = in_array($period, self::PERIODS, true) ? $period : '30d';
-        [$start, $end] = $this->periodBounds($period);
 
         if ($user->isMaster()) {
-            return $this->masterAnalytics($user, $period, $start, $end);
+            return ApplicationCache::rememberDashboardMaster(
+                (int) $user->id,
+                $period,
+                fn (): array => $this->masterAnalytics(
+                    $user,
+                    $period,
+                    ...$this->periodBounds($period),
+                ),
+            );
         }
 
         if ($user->tenant_id === null) {
             return $this->emptyTenantPayload($period);
         }
 
-        return $this->tenantAnalytics((int) $user->tenant_id, $period, $start, $end);
+        return ApplicationCache::rememberDashboardTenant(
+            (int) $user->tenant_id,
+            $period,
+            fn (): array => $this->tenantAnalytics(
+                (int) $user->tenant_id,
+                $period,
+                ...$this->periodBounds($period),
+            ),
+        );
     }
 
     /**

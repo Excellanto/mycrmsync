@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Integration;
+use App\Support\ApplicationCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -155,6 +156,7 @@ class DataConfigurationController extends Controller
         });
 
         cache()->forget('app_settings');
+        ApplicationCache::forgetEnabledIntegrations();
 
         return back()->with('success', 'Integrations saved.');
     }

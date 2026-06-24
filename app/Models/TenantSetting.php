@@ -72,10 +72,16 @@ class TenantSetting extends Model
 
     public static function getValue(int $tenantId, string $key, mixed $default = null): mixed
     {
-        $row = static::query()
-            ->where('tenant_id', $tenantId)
-            ->where('key', $key)
-            ->first();
+        $settings = cache()->remember(
+            static::cacheKey($tenantId),
+            3600,
+            fn () => static::query()
+                ->where('tenant_id', $tenantId)
+                ->get()
+                ->keyBy('key'),
+        );
+
+        $row = $settings->get($key);
 
         if (! $row || $row->value === null || $row->value === '') {
             return $default;

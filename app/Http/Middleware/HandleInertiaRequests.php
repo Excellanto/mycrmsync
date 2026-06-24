@@ -2,10 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Integrations\CrmApiClientResolver;
-use App\Models\Integration;
-use App\Models\Role;
-use App\Models\Tenant;
+use App\Support\ApplicationCache;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,107 +33,20 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => function () use ($request) {
-                    $user = $request->user();
-                    if (! $user) {
-                        return null;
-                    }
-
-                    $user->loadMissing(['roles', 'tenant']);
-
-                    /** @var \Illuminate\Database\Eloquent\Collection<int, Role> $roles */
-                    $roles = $user->roles;
-                    $superAdminNav = $roles->contains(
-                        fn (Role $role) => $role->is_platform_scope === true
-                            || $role->slug === 'super_admin'
-                    );
-
-                    return array_merge($user->only('id', 'name', 'email', 'tenant_id'), [
-                        'is_master' => $user->isMaster(),
-                        'super_admin_nav' => $superAdminNav,
-                        'roles' => $user->getRoleNames()->values()->all(),
-                        'role_slugs' => $roles->pluck('slug')->filter()->unique()->values()->all(),
-                        'tenant' => $user->tenant
-                            ? array_merge(
-                                $user->tenant->only('id', 'company_name', 'account_type', 'email_ingestion_enabled'),
-                                [
-                                    'company_logo_url' => $user->tenant->companyLogoUrl(),
-                                    'integration_slug' => (string) data_get($user->tenant->integration, 'slug', ''),
-                                ]
-                            )
-                            : null,
-                    ]);
-                },
-                'permissions' => fn () => $request->user()
-                    ? $request->user()->getAllPermissions()->pluck('name')->values()->all()
-                    : [],
-                'contact_management_available' => function () use ($request) {
-                    $user = $request->user();
-                    if (! $user) {
-                        return false;
-                    }
-
-                    if ($user->tenant) {
-                        return CrmApiClientResolver::isMyCrmSyncTenant($user->tenant);
-                    }
-
-                    if ($user->isMaster()) {
-                        return Tenant::query()
-                            ->where('integration->slug', CrmApiClientResolver::SLUG_MYCRMSYNC)
-                            ->exists();
-                    }
-
-                    return false;
-                },
-                /*
-                 * Policy + Gate-aware flags for sidebar rows. Use this instead of guessing from the flat
-                 * `permissions` list when granular `nav.*` toggles would otherwise hide authorized links.
-                 */
-                'can' => function () use ($request) {
-                    $user = $request->user();
-                    if (! $user) {
-                        return [
-                            'user_management' => [
-                                'users' => false,
-                                'roles' => false,
-                                'permissions' => false,
-                                'activity_logs' => false,
-                                'tenants' => false,
-                            ],
-                            'call_logs' => false,
-                            'contacts' => false,
-                        ];
-                    }
-
-                    return [
-                        'user_management' => [
-                            'users' => $user->can('users.view'),
-                            'roles' => $user->can('roles.view'),
-                            'permissions' => $user->can('permissions.view'),
-                            'activity_logs' => $user->can('activity-logs.view'),
-                            'tenants' => $user->can('tenants.view'),
-                        ],
-                        'call_logs' => $user->can('call-logs.view'),
-                        'contacts' => $user->can('contacts.view'),
-                    ];
-                },
+                'user' => fn () => $this->authBundle($request)['user'],
+                'permissions' => fn () => $this->authBundle($request)['permissions'],
+                'contact_management_available' => fn () => $this->authBundle($request)['contact_management_available'],
+                'can' => fn () => $this->authBundle($request)['can'],
             ],
             'crm' => [
                 'enabled' => fn () => $request->user()
-                    ? Integration::enabledIntegrationNames()
+                    ? array_map(
+                        fn (array $integration) => $integration['name'],
+                        ApplicationCache::rememberEnabledIntegrations(),
+                    )
                     : [],
                 'integrations' => fn () => $request->user()
-                    ? Integration::query()
-                        ->where('enabled', true)
-                        ->orderBy('type')
-                        ->orderBy('name')
-                        ->get(['name', 'slug'])
-                        ->map(fn (Integration $integration) => [
-                            'name' => $integration->name,
-                            'slug' => $integration->slug,
-                        ])
-                        ->values()
-                        ->all()
+                    ? ApplicationCache::rememberEnabledIntegrations()
                     : [],
             ],
             'flash' => [
@@ -144,5 +54,32 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
         ];
+    }
+
+    /**
+     * @return array{
+     *     user: array<string, mixed>|null,
+     *     permissions: list<string>,
+     *     can: array<string, mixed>,
+     *     contact_management_available: bool
+     * }
+     */
+    private function authBundle(Request $request): array
+    {
+        if ($request->attributes->has('inertia_auth_bundle')) {
+            /** @var array{user: array<string, mixed>|null, permissions: list<string>, can: array<string, mixed>, contact_management_available: bool} $bundle */
+            $bundle = $request->attributes->get('inertia_auth_bundle');
+
+            return $bundle;
+        }
+
+        $user = $request->user();
+        $bundle = $user
+            ? ApplicationCache::rememberUserAuth($user)
+            : ApplicationCache::emptyAuthBundle();
+
+        $request->attributes->set('inertia_auth_bundle', $bundle);
+
+        return $bundle;
     }
 }
