@@ -458,6 +458,22 @@
 							<span v-show="!sidebarCollapsed">Integrations</span>
 						</Link>
 						<Link
+							v-if="showEmailTemplatesNav"
+							:href="route('admin.email-templates.index')"
+							:class="subNavClass(isPathActive('/admin/email-templates'), sidebarCollapsed)"
+							title="Email Templates"
+						>
+							<svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+								/>
+							</svg>
+							<span v-show="!sidebarCollapsed">Email Templates</span>
+						</Link>
+						<Link
 							v-if="showSystemSettingsNav"
 							:href="route('admin.settings.index')"
 							:class="subNavClass(isPathActive('/admin/settings'), sidebarCollapsed)"
@@ -589,6 +605,7 @@ const isSettingsSectionActive = computed(
 		pathMatchesPrefix('/admin/languages') ||
 		pathMatchesPrefix('/admin/data-configuration') ||
 		pathMatchesPrefix('/admin/integrations') ||
+		pathMatchesPrefix('/admin/email-templates') ||
 		pathMatchesPrefix('/admin/settings')
 );
 
@@ -808,6 +825,12 @@ const showIntegrationsNav = computed(() => {
 	if (!navSettingsParentAllowed.value) return false;
 	return canShowNav('nav.settings.integrations.show', 'settings.view');
 });
+const showEmailTemplatesNav = computed(() => {
+	if (showAllMenus.value) return true;
+	if (bypassNavGranular.value) return true;
+	if (!navSettingsParentAllowed.value) return false;
+	return canShowNav('nav.settings.email-templates.show', 'settings.view');
+});
 const showSystemSettingsNav = computed(() => {
 	if (showAllMenus.value) return true;
 	if (bypassNavGranular.value) return true;
@@ -821,6 +844,7 @@ const showSettingsModule = computed(
 		showPoolAllocationNav.value ||
 		showDataConfigurationNav.value ||
 		showIntegrationsNav.value ||
+		showEmailTemplatesNav.value ||
 		showSystemSettingsNav.value
 );
 

@@ -35,6 +35,8 @@ const MYCRMSYNC_INTEGRATION_SLUG = 'mycrmsync';
 const page = usePage();
 const toast = useToast();
 
+const isMaster = computed(() => page.props.auth?.user?.is_master === true);
+
 const INTEGRATION_INCOMPLETE_TOAST = 'Integration is incomplete';
 
 const isTenantIntegrationIncomplete = computed(() => {
@@ -593,7 +595,7 @@ const deleteUser = (u) => {
 							<InputError class="mt-2" :message="form.errors.email" />
 						</div>
 
-						<div>
+						<div v-if="isMaster">
 							<InputLabel for="status" value="Status" />
 							<select
 								id="status"
@@ -601,6 +603,7 @@ const deleteUser = (u) => {
 								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 								required
 							>
+								<option value="new">new</option>
 								<option value="active">active</option>
 								<option value="inactive">inactive</option>
 								<option value="suspended">suspended</option>

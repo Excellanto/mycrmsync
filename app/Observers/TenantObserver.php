@@ -9,6 +9,10 @@ class TenantObserver
 {
     public function updated(Tenant $tenant): void
     {
+        if ($tenant->wasChanged('status')) {
+            ApplicationCache::forgetAuthForTenantUsers((int) $tenant->id);
+        }
+
         if (! $tenant->wasChanged([
             'company_logo_path',
             'integration',

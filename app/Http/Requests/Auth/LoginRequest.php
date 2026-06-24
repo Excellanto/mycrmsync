@@ -49,6 +49,15 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+        if ($user?->tenant && ! $user->tenant->allowsLogin()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => $user->tenant->loginBlockedMessage(),
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

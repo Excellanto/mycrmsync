@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Storage;
 
 class Tenant extends Model
 {
+    public const STATUS_NEW = 'new';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_INACTIVE = 'inactive';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
     protected $fillable = ['company_name', 'account_type', 'email', 'pan_card', 'gst_number', 'status', 'company_logo_path', 'email_ingestion_enabled', 'integration', 'integration_status'];
 
     protected $casts = [
@@ -48,6 +56,20 @@ class Tenant extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function allowsLogin(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function loginBlockedMessage(): string
+    {
+        if ($this->status === self::STATUS_NEW) {
+            return 'Your account is pending activation. Please contact an administrator.';
+        }
+
+        return 'Your account has been suspended or is inactive.';
     }
 
     // Email ingestion removed: emailAccounts relation deleted.

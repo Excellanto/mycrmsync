@@ -46,13 +46,18 @@
 
 			<PColumn header="Status">
 				<template #body="slotProps">
-					<Badge
-						:class="{
-							'bg-green-100 text-green-800': slotProps.data.status === 'active',
-							'bg-yellow-100 text-yellow-800': slotProps.data.status === 'inactive',
-							'bg-red-100 text-red-800': slotProps.data.status === 'suspended'
-						}"
+					<select
+						v-if="canUpdateStatus"
+						:value="slotProps.data.status"
+						class="rounded-md border-gray-300 py-1 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+						:disabled="statusUpdatingId === slotProps.data.id"
+						@change="onStatusChange(slotProps.data, $event)"
 					>
+						<option v-for="option in statusOptions" :key="option" :value="option">
+							{{ option }}
+						</option>
+					</select>
+					<Badge v-else :class="statusBadgeClass(slotProps.data.status)">
 						{{ slotProps.data.status }}
 					</Badge>
 				</template>
@@ -98,16 +103,27 @@
 <script setup>
 import Badge from '@/Components/Badge.vue';
 import Pagination from '@/Components/Pagination.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
 	tenants: Object,
 	canCreate: Boolean,
+	canUpdateStatus: {
+		type: Boolean,
+		default: false,
+	},
+	statusOptions: {
+		type: Array,
+		default: () => ['new', 'active', 'inactive', 'suspended'],
+	},
 	integrationLabels: {
 		type: Object,
 		default: () => ({}),
 	},
 });
+
+const statusUpdatingId = ref(null);
 
 function integrationLabel(integration) {
 	const slug = integration && typeof integration === 'object' ? integration.slug : null;
@@ -121,5 +137,33 @@ function formatDate(dateStr) {
 	if (!dateStr) return '-';
 	const d = new Date(dateStr);
 	return d.toLocaleDateString();
+}
+
+function statusBadgeClass(status) {
+	return {
+		'bg-blue-100 text-blue-800': status === 'new',
+		'bg-green-100 text-green-800': status === 'active',
+		'bg-yellow-100 text-yellow-800': status === 'inactive',
+		'bg-red-100 text-red-800': status === 'suspended',
+	};
+}
+
+function onStatusChange(tenant, event) {
+	const status = event.target.value;
+	if (status === tenant.status) {
+		return;
+	}
+
+	statusUpdatingId.value = tenant.id;
+	router.patch(
+		route('admin.tenants.update-status', tenant.id),
+		{ status },
+		{
+			preserveScroll: true,
+			onFinish: () => {
+				statusUpdatingId.value = null;
+			},
+		}
+	);
 }
 </script>

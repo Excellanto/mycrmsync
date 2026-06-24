@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Integrations\FetchTenantIntegrationCrmUsers;
-use App\Mail\LoginOtpMail;
+use App\Mail\RenderedTemplateMail;
+use App\Models\EmailTemplate;
 use App\Models\Integration;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CallLog\CallLogSyncTokenService;
+use App\Services\Email\EmailTemplateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -48,10 +50,14 @@ final class EmailOtpAuthController extends Controller
 
         $emailKey = $this->normalizedEmailKey($data['email']);
 
-        $user = User::query()->where('email', $data['email'])->first();
+        $user = User::query()->with('tenant')->where('email', $data['email'])->first();
 
         if (! $user) {
             return ApiResponse::error('No account found for this email address.', 404);
+        }
+
+        if ($user->tenant && ! $user->tenant->allowsLogin()) {
+            return ApiResponse::error($user->tenant->loginBlockedMessage(), 403);
         }
 
         $otp = $this->issueOtp();
@@ -61,7 +67,18 @@ final class EmailOtpAuthController extends Controller
         Cache::forget('email_otp_verify_fails:'.$emailKey);
 
         try {
-            Mail::to($user->email)->send(new LoginOtpMail($otp));
+            $rendered = EmailTemplateService::render(EmailTemplate::SLUG_LOGIN_OTP, [
+                'otp_code' => $otp,
+                'user_name' => $user->name,
+                'user_email' => $user->email,
+                'app_name' => (string) config('app.name'),
+                'expires_minutes' => (string) (self::OTP_TTL_SECONDS / 60),
+            ]);
+
+            Mail::to($user->email)->send(new RenderedTemplateMail(
+                $rendered['subject'],
+                $rendered['html'],
+            ));
         } catch (Throwable $e) {
             Cache::forget('email_otp_digest:'.$emailKey);
 
@@ -106,6 +123,10 @@ final class EmailOtpAuthController extends Controller
 
         if (! $user) {
             return ApiResponse::error('No account found for this email address.', 404);
+        }
+
+        if ($user->tenant && ! $user->tenant->allowsLogin()) {
+            return ApiResponse::error($user->tenant->loginBlockedMessage(), 403);
         }
 
         $stored = Cache::get('email_otp_digest:'.$emailKey);

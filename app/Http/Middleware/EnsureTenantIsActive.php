@@ -16,19 +16,19 @@ class EnsureTenantIsActive
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        
+
         // Master users (tenant_id = null) bypass this check
         if ($user && $user->tenant_id === null) {
             return $next($request);
         }
-        
+
         // Check if user's tenant is active
         if ($user && $user->tenant) {
-            if ($user->tenant->status !== 'active') {
-                abort(403, 'Your account has been suspended or is inactive.');
+            if (! $user->tenant->allowsLogin()) {
+                abort(403, $user->tenant->loginBlockedMessage());
             }
         }
-        
+
         return $next($request);
     }
 }

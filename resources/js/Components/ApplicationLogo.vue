@@ -1,8 +1,8 @@
 <template>
 	<div v-bind="$attrs" class="w-full flex justify-center">
-		<img :src="logo" alt="Sibrama Newage" class="w-[70%] mx-auto" />
+		<img :src="logo" alt="MyCrmSync" class="w-100 mx-auto" />
 	</div>
 </template>
 <script setup>
-import logo from '../../images/sibrama-newage.png';
+import logo from '../../images/mycrmsync.png';
 </script>

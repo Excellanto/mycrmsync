@@ -22,7 +22,7 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout gradient-background>
         <Head title="Forgot Password" />
 
         <div class="mb-4 text-sm text-gray-600">

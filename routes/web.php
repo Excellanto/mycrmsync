@@ -2,9 +2,10 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ApiEndpointMapperController;
-use App\Http\Controllers\DataConfigurationController;
-use App\Http\Controllers\IntegrationSettingsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataConfigurationController;
+use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\IntegrationSettingsController;
 use App\Http\Controllers\LanguageStringController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
@@ -107,6 +108,11 @@ Route::prefix('admin')
         Route::put('/integrations/storage/{provider}', [IntegrationSettingsController::class, 'updateStorage'])
             ->where('provider', 'supabase|google_drive|dropbox|r2')
             ->name('integrations.storage.update');
+
+        Route::get('/email-templates', [EmailTemplateController::class, 'index'])->name('email-templates.index');
+        Route::put('/email-templates/{emailTemplate:slug}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
+        Route::post('/email-templates/{emailTemplate:slug}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+
         // Settings routes for AI, Pricing, Pool Allocation and System Email Ingestion removed.
 
         // (Email management removed)
@@ -176,6 +182,9 @@ Route::prefix('admin')
         Route::put('/tenants/{tenant}', [\App\Http\Controllers\TenantController::class, 'update'])
             ->middleware('permission:tenants.update')
             ->name('tenants.update');
+        Route::patch('/tenants/{tenant}/status', [\App\Http\Controllers\TenantController::class, 'updateStatus'])
+            ->middleware('permission:tenants.update')
+            ->name('tenants.update-status');
         Route::get('/tenants/{tenant}/integrations/zoho/oauth/start', [\App\Http\Controllers\TenantZohoOAuthController::class, 'start'])
             ->middleware('permission:tenants.update')
             ->name('tenants.integrations.zoho.oauth.start');

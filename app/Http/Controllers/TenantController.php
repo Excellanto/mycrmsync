@@ -45,6 +45,13 @@ class TenantController extends Controller
         return Inertia::render('Admin/Tenants/Index', [
             'tenants' => $tenants,
             'canCreate' => $request->user()?->can('create', Tenant::class) ?? false,
+            'canUpdateStatus' => $user->isMaster() && $user->can('tenants.update'),
+            'statusOptions' => [
+                Tenant::STATUS_NEW,
+                Tenant::STATUS_ACTIVE,
+                Tenant::STATUS_INACTIVE,
+                Tenant::STATUS_SUSPENDED,
+            ],
             'integrationLabels' => Integration::query()->pluck('name', 'slug')->all(),
         ]);
     }
@@ -84,7 +91,7 @@ class TenantController extends Controller
             'email' => $data['email'],
             'pan_card' => $data['pan_card'] ?: null,
             'gst_number' => $data['gst_number'] ?: null,
-            'status' => 'active',
+            'status' => Tenant::STATUS_NEW,
         ]);
 
         $user = User::create([
@@ -151,7 +158,7 @@ class TenantController extends Controller
             'email' => 'required|string|email|max:255|unique:tenants,email,'.$tenant->id,
             'pan_card' => 'nullable|string|max:20|regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/',
             'gst_number' => 'nullable|string|max:20|regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$/',
-            'status' => 'required|in:active,inactive,suspended',
+            'status' => 'required|in:new,active,inactive,suspended',
             'integration' => ['nullable', 'array'],
             'integration.slug' => ['nullable', 'string', 'max:191'],
             'integration.values' => ['nullable', 'array'],
@@ -183,6 +190,28 @@ class TenantController extends Controller
 
         return redirect()->to($url)
             ->with('success', 'Tenant updated successfully.');
+    }
+
+    public function updateStatus(Request $request, Tenant $tenant)
+    {
+        $this->authorize('update', $tenant);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user->isMaster()) {
+            abort(403, 'Only platform administrators can change tenant status from this screen.');
+        }
+
+        $data = $request->validate([
+            'status' => 'required|in:new,active,inactive,suspended',
+        ]);
+
+        $tenant->update(['status' => $data['status']]);
+
+        ApplicationCache::forgetAuthForTenantUsers((int) $tenant->id);
+
+        return back()->with('success', 'Tenant status updated.');
     }
 
     public function integrationCrmUsers(Request $request, Tenant $tenant, FetchTenantIntegrationCrmUsers $fetch): JsonResponse

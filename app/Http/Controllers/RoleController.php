@@ -124,6 +124,7 @@ class RoleController extends Controller
             // 'AI Settings' and 'Pricing' removed
             'Data Configuration' => $permissions->filter(fn ($p) => $p->name === 'nav.settings.data-configuration.show')->sortBy('name')->values(),
             'Integrations' => $permissions->filter(fn ($p) => $p->name === 'nav.settings.integrations.show')->sortBy('name')->values(),
+            'Email Templates' => $permissions->filter(fn ($p) => $p->name === 'nav.settings.email-templates.show')->sortBy('name')->values(),
             'System settings' => $permissions->filter(fn ($p) => $p->name === 'nav.settings.system-settings.show')->sortBy('name')->values(),
         ];
         $settingsSubs = array_filter($settingsSubs, fn ($arr) => $arr->isNotEmpty());

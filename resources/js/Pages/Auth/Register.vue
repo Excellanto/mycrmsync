@@ -5,7 +5,7 @@ import { Head } from '@inertiajs/vue3';
 </script>
 
 <template>
-	<GuestLayout>
+	<GuestLayout gradient-background>
 		<Head title="Register" />
 		<TenantRegistrationForm
 			:submit-route="route('register')"

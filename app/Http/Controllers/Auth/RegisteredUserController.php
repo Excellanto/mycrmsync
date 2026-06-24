@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -49,7 +48,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'pan_card' => $request->pan_card,
             'gst_number' => $request->gst_number,
-            'status' => 'active',
+            'status' => 'new',
         ]);
 
         // Create user with tenant_id
@@ -65,8 +64,8 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(route('admin.dashboard', absolute: false));
+        return redirect()
+            ->route('login')
+            ->with('status', 'Registration successful. Your account is pending activation by an administrator.');
     }
 }

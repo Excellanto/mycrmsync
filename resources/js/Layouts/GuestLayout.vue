@@ -1,11 +1,27 @@
 <script setup>
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const props = defineProps({
+    gradientBackground: {
+        type: Boolean,
+        default: false,
+    },
+});
+
+const pageStyle = computed(() =>
+    props.gradientBackground
+        ? { background: 'linear-gradient(to right, #c12dd1, #6d8cf8)' }
+        : undefined,
+);
 </script>
 
 <template>
     <div
-        class="flex min-h-screen flex-col items-center bg-app pt-6 sm:justify-center sm:pt-0"
+        class="flex min-h-screen flex-col items-center pt-6 sm:justify-center sm:pt-0"
+        :class="{ 'bg-app': !gradientBackground }"
+        :style="pageStyle"
     >
         <div>
             <Link href="/">

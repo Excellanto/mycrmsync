@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Listeners\LogAuthenticationEvents;
 use App\Models\CallRecording;
 use App\Models\Contact;
+use App\Models\EmailTemplate;
 use App\Models\Integration;
 use App\Models\LanguageString;
 use App\Models\Role;
@@ -21,10 +22,13 @@ use App\Observers\SiteSettingObserver;
 use App\Observers\TenantObserver;
 use App\Observers\UserObserver;
 use App\Scribe\WindowsSafeWriter;
+use App\Services\Email\EmailTemplateService;
 // AiSettingsService removed
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -63,5 +67,29 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, [LogAuthenticationEvents::class, 'handleLogin']);
         Event::listen(Logout::class, [LogAuthenticationEvents::class, 'handleLogout']);
         Event::listen(Failed::class, [LogAuthenticationEvents::class, 'handleFailed']);
+
+        ResetPassword::toMailUsing(function (object $notifiable, string $token) {
+            $resetUrl = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            $expireMinutes = (string) config(
+                'auth.passwords.'.config('auth.defaults.passwords').'.expire',
+                60
+            );
+
+            $rendered = EmailTemplateService::render(EmailTemplate::SLUG_PASSWORD_RECOVERY, [
+                'user_name' => (string) ($notifiable->name ?? 'User'),
+                'user_email' => (string) $notifiable->getEmailForPasswordReset(),
+                'reset_url' => $resetUrl,
+                'app_name' => (string) config('app.name'),
+                'expires_minutes' => $expireMinutes,
+            ]);
+
+            return (new MailMessage)
+                ->subject($rendered['subject'])
+                ->view('mail.raw-html', ['html' => $rendered['html']]);
+        });
     }
 }

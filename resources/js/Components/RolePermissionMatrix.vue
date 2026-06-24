@@ -160,6 +160,7 @@ const subModuleNavPermissionMap = {
 		'Languages': 'nav.settings.languages.show',
 		'Data Configuration': 'nav.settings.data-configuration.show',
 		'Integrations': 'nav.settings.integrations.show',
+		'Email Templates': 'nav.settings.email-templates.show',
 		'System settings': 'nav.settings.system-settings.show'
 	},
 	// Configurations / Email management removed
