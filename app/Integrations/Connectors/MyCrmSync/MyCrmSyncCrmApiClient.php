@@ -64,6 +64,22 @@ final class MyCrmSyncCrmApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function updateContact(Tenant $tenant, string $contactId, array $body): array
+    {
+        $contact = $this->contacts->findForTenant($tenant->id, $contactId);
+        $updated = $this->contacts->update($contact, $body);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $this->mapper->mapContact($updated)->toArray(),
+        ], 200];
+    }
+
+    /**
      * @return array{0: array{success: bool, status: bool, message: string, contactId: string}, 1: int}
      */
     public function deleteContact(Tenant $tenant, string $contactId): array

@@ -117,7 +117,7 @@ final class ZohoCrmApiClient
      */
     public function createContact(Tenant $tenant, array $body): array
     {
-        $record = $this->createContactRecord($body);
+        $record = $this->contactRecordFromBody($body, requireLastName: true);
         $response = $this->request($tenant, 'POST', '/Contacts', json: [
             'data' => [$record],
         ]);
@@ -129,6 +129,46 @@ final class ZohoCrmApiClient
 
             throw new RuntimeException(
                 $message !== '' ? $message : 'Contact creation failed.',
+                502
+            );
+        }
+
+        [$contact, $status] = $this->getContact($tenant, $contactId);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $contact,
+        ], $status];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function updateContact(Tenant $tenant, string $contactId, array $body): array
+    {
+        if (preg_match('/^\d+$/', $contactId) !== 1) {
+            throw new RuntimeException('The selected user is linked to Zoho. Use a Zoho contact id from /api/crm/contacts or /api/crm/contacts/search.', 422);
+        }
+
+        $record = $this->contactRecordFromBody($body, requireLastName: false);
+
+        if ($record === []) {
+            throw new RuntimeException('At least one contact field is required to update.', 422);
+        }
+
+        $response = $this->request($tenant, 'PUT', "/Contacts/{$contactId}", json: [
+            'data' => [$record],
+        ]);
+        $json = $this->successfulJson($response);
+        $code = strtoupper(trim((string) data_get($json, 'data.0.code', 'SUCCESS')));
+
+        if ($code !== 'SUCCESS') {
+            $message = trim((string) data_get($json, 'data.0.message', ''));
+
+            throw new RuntimeException(
+                $message !== '' ? $message : 'Contact update failed.',
                 502
             );
         }
@@ -787,12 +827,12 @@ final class ZohoCrmApiClient
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>
      */
-    private function createContactRecord(array $body): array
+    private function contactRecordFromBody(array $body, bool $requireLastName = true): array
     {
         $firstName = trim((string) ($body['firstName'] ?? $body['first_name'] ?? ''));
         $lastName = trim((string) ($body['lastName'] ?? $body['last_name'] ?? ''));
 
-        if ($lastName === '') {
+        if ($requireLastName && $lastName === '') {
             $lastName = $firstName !== '' ? $firstName : 'Contact';
         }
 

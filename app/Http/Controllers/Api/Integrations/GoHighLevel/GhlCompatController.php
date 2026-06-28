@@ -241,31 +241,7 @@ final class GhlCompatController extends Controller
     {
         ['tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
 
-        $data = $request->validate([
-            'firstName' => ['nullable', 'string', 'max:255'],
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'lastName' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'string', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:64'],
-            'companyName' => ['nullable', 'string', 'max:255'],
-            'company_name' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'max:255'],
-            'postalCode' => ['nullable', 'string', 'max:50'],
-            'postal_code' => ['nullable', 'string', 'max:50'],
-            'pincode' => ['nullable', 'string', 'max:50'],
-            'country' => ['nullable', 'string', 'max:255'],
-            'website' => ['nullable', 'string', 'max:255'],
-            'timezone' => ['nullable', 'string', 'max:100'],
-            'source' => ['nullable', 'string', 'max:255'],
-            'type' => ['nullable', 'string', 'max:255'],
-            'assignedTo' => ['nullable', 'string', 'max:255'],
-            'assigned_to' => ['nullable', 'string', 'max:255'],
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['string', 'max:255'],
-        ]);
+        $data = $request->validate($this->contactFieldInputRules());
 
         $email = trim((string) ($data['email'] ?? ''));
         $phone = trim((string) ($data['phone'] ?? ''));
@@ -290,6 +266,61 @@ final class GhlCompatController extends Controller
             $tenant,
             $this->bodyWithoutLocalContext($request, $tenant, defaultLocationId: true)
         ));
+    }
+
+    /**
+     * Update contact
+     *
+     * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
+     * @bodyParam contactId string required CRM contact id from list/search. Also accepts `contact`, `contact_id`, or `contactid`. Example: 550e8400-e29b-41d4-a716-446655440000
+     * @bodyParam firstName string optional Contact first name. Also accepts `first_name`. Example: Jane
+     * @bodyParam lastName string optional Contact last name. Also accepts `last_name`. Example: Doe
+     * @bodyParam email string optional Contact email. Example: jane@example.com
+     * @bodyParam phone string optional Contact phone. Example: +919910023290
+     * @bodyParam companyName string optional Company name. Also accepts `company_name`. Example: Acme Corp
+     * @bodyParam address string optional Street address. Example: 123 Main St
+     * @bodyParam city string optional City. Example: Mumbai
+     * @bodyParam state string optional State or province. Example: MH
+     * @bodyParam postalCode string optional Postal or ZIP code. Also accepts `postal_code` or `pincode`. Example: 400001
+     * @bodyParam country string optional Country. Example: IN
+     * @bodyParam tags string[] optional Tag labels. Example: ["lead","vip"]
+     * @bodyParam source string optional Lead source. Example: mobile app
+     * @bodyParam assignedTo string optional Assigned user id in the integrated CRM. Also accepts `assigned_to`. Example: 5
+     *
+     * @response 200 {"success":true,"status":true,"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com","city":"Mumbai","postalCode":"400001"}}
+     */
+    public function updateContact(Request $request): JsonResponse
+    {
+        ['tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
+
+        $data = $request->validate(array_merge(
+            $this->contactIdInputRules(),
+            $this->contactFieldInputRules(),
+        ));
+        $contactId = $this->resolvedContactIdFromData($data);
+
+        if ($contactId === '') {
+            throw ValidationException::withMessages([
+                'contactId' => ['The contactId field is required.'],
+            ]);
+        }
+
+        $payload = $this->bodyWithoutLocalContext($request, $tenant, except: [
+            'contactId',
+            'contact',
+            'contact_id',
+            'contactid',
+        ]);
+
+        if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->myCrmSync->updateContact($tenant, $contactId, $payload));
+        }
+
+        if ($this->isZohoTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->zoho->updateContact($tenant, $contactId, $payload));
+        }
+
+        return $this->proxyArray(fn () => $this->ghl->updateContact($tenant, $contactId, $payload));
     }
 
     /**
@@ -569,6 +600,38 @@ final class GhlCompatController extends Controller
             'noteId' => ['nullable', 'string'],
             'note_id' => ['nullable', 'string'],
             'id' => ['nullable', 'string'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function contactFieldInputRules(): array
+    {
+        return [
+            'firstName' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'lastName' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'companyName' => ['nullable', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'postalCode' => ['nullable', 'string', 'max:50'],
+            'postal_code' => ['nullable', 'string', 'max:50'],
+            'pincode' => ['nullable', 'string', 'max:50'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'timezone' => ['nullable', 'string', 'max:100'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'max:255'],
+            'assignedTo' => ['nullable', 'string', 'max:255'],
+            'assigned_to' => ['nullable', 'string', 'max:255'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['string', 'max:255'],
         ];
     }
 

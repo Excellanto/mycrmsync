@@ -83,6 +83,45 @@ final class GoHighLevelApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function updateContact(Tenant $tenant, string $contactId, array $body): array
+    {
+        $payload = $this->contactFieldsPayload($body);
+
+        if ($payload === []) {
+            throw new RuntimeException('At least one contact field is required to update.', 422);
+        }
+
+        $response = $this->request(
+            $tenant,
+            'PUT',
+            "/contacts/{$contactId}",
+            json: $payload,
+            versionOverride: '2021-07-28',
+        );
+        $json = $this->successfulJson($response);
+        $row = data_get($json, 'contact');
+
+        if (! is_array($row)) {
+            [$contact, $status] = $this->getContact($tenant, $contactId);
+
+            return [[
+                'success' => true,
+                'status' => true,
+                'contact' => $contact,
+            ], $status];
+        }
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $this->contactMapper->mapContact($row)->toArray(),
+        ], $response->status()];
+    }
+
+    /**
      * @return array{0: array{success: bool, status: bool, message: string, contactId: string}, 1: int}
      */
     public function deleteContact(Tenant $tenant, string $contactId): array
@@ -663,12 +702,23 @@ final class GoHighLevelApiClient
             throw new RuntimeException('Either email or phone is required.', 422);
         }
 
+        $payload = $this->contactFieldsPayload($body);
+        $payload['locationId'] = $this->defaultLocationId($tenant);
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function contactFieldsPayload(array $body): array
+    {
         $payload = array_filter([
-            'locationId' => $this->defaultLocationId($tenant),
             'firstName' => trim((string) ($body['firstName'] ?? $body['first_name'] ?? '')),
             'lastName' => trim((string) ($body['lastName'] ?? $body['last_name'] ?? '')),
-            'email' => $email,
-            'phone' => $phone,
+            'email' => trim((string) ($body['email'] ?? '')),
+            'phone' => trim((string) ($body['phone'] ?? '')),
             'companyName' => trim((string) ($body['companyName'] ?? $body['company_name'] ?? '')),
             'address1' => trim((string) ($body['address'] ?? '')),
             'city' => trim((string) ($body['city'] ?? '')),
