@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CallRecording\CallRecordingProcessingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -99,7 +100,25 @@ class CallLogController extends Controller
                 : null,
             'users' => $usersQuery->get(),
             'directions' => ['INCOMING', 'OUTGOING', 'MISSED', 'UNKNOWN'],
+            'canDelete' => $user->can('call-logs.delete'),
         ]);
+    }
+
+    public function destroy(Request $request, CallLog $callLog): RedirectResponse
+    {
+        $this->authorize('delete', $callLog);
+
+        CallRecording::query()
+            ->where('call_log_id', $callLog->id)
+            ->delete();
+
+        $callLog->delete();
+
+        return redirect()
+            ->route('admin.call-logs.index', $request->only([
+                'tenant_id', 'user_id', 'phone', 'contact', 'direction', 'start_date', 'end_date', 'has_recording', 'page',
+            ]))
+            ->with('success', 'Call log deleted successfully.');
     }
 
     public function recordings(CallLog $callLog): JsonResponse

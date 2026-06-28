@@ -177,6 +177,21 @@
 						<span class="text-sm text-gray-700">{{ data.status }}</span>
 					</template>
 				</PColumn>
+
+				<PColumn v-if="canDelete" header="Actions" style="width: 80px">
+					<template #body="{ data }">
+						<button
+							type="button"
+							class="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-600"
+							title="Delete call log"
+							@click="confirmDelete(data)"
+						>
+							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+							</svg>
+						</button>
+					</template>
+				</PColumn>
 			</PDataTable>
 		</div>
 
@@ -269,6 +284,7 @@ const props = defineProps({
 	tenants: Array,
 	users: Array,
 	directions: Array,
+	canDelete: Boolean,
 });
 
 const filters = reactive({
@@ -354,6 +370,18 @@ function resetFilters() {
 	filters.has_recording = false;
 	tenantSelection.value = null;
 	applyFilters();
+}
+
+function confirmDelete(callLog) {
+	const label = callLog.contact_name || callLog.phone_e164 || callLog.phone_raw || 'this call log';
+	if (!window.confirm(`Delete call log for "${label}"? This cannot be undone.`)) {
+		return;
+	}
+
+	router.delete(route('admin.call-logs.destroy', callLog.id), {
+		data: filterPayload(),
+		preserveScroll: true,
+	});
 }
 
 async function openRecordingDrawer(callLog) {

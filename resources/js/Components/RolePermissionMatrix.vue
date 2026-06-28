@@ -119,6 +119,7 @@ const permissionLabels = {
 	'activity-logs.export': 'Export activity logs',
 	'activity-logs.delete': 'Delete activity logs',
 	'call-logs.view': 'View call logs',
+	'call-logs.delete': 'Delete call logs',
 	'contacts.view': 'View contacts',
 	'contacts.create': 'Create contacts',
 	'contacts.update': 'Edit contacts',

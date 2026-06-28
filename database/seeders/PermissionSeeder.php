@@ -44,6 +44,7 @@ class PermissionSeeder extends Seeder
             'short-urls.view',
             // Call logs
             'call-logs.view',
+            'call-logs.delete',
             'nav.crm.show',
             'nav.crm.call-logs.show',
             // Contacts (MyCrmSync)

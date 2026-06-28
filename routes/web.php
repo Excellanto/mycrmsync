@@ -142,6 +142,9 @@ Route::prefix('admin')
         Route::get('/call-logs/{callLog}/recordings', [\App\Http\Controllers\Admin\CallLogController::class, 'recordings'])
             ->middleware('permission:call-logs.view')
             ->name('call-logs.recordings');
+        Route::delete('/call-logs/{callLog}', [\App\Http\Controllers\Admin\CallLogController::class, 'destroy'])
+            ->middleware('permission:call-logs.delete')
+            ->name('call-logs.destroy');
 
         Route::get('/contacts', [\App\Http\Controllers\Admin\ContactController::class, 'index'])
             ->middleware('permission:contacts.view')

@@ -27,4 +27,20 @@ class CallLogPolicy
         return $callLog->user !== null
             && (int) $callLog->user->tenant_id === (int) $user->tenant_id;
     }
+
+    public function delete(User $user, CallLog $callLog): bool
+    {
+        if (! $user->can('call-logs.delete')) {
+            return false;
+        }
+
+        if ($user->isMaster()) {
+            return true;
+        }
+
+        $callLog->loadMissing('user');
+
+        return $callLog->user !== null
+            && (int) $callLog->user->tenant_id === (int) $user->tenant_id;
+    }
 }
