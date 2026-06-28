@@ -579,7 +579,7 @@ final class DashboardAnalyticsService
             ->count();
 
         $byAssigned = Contact::query()
-            ->forTenantId($tenantId)
+            ->where('contacts.tenant_id', $tenantId)
             ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id')
             ->selectRaw("COALESCE(users.name, 'Unassigned') as label, COUNT(*) as count")
             ->groupBy('users.name')
