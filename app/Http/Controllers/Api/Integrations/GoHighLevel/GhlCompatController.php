@@ -218,6 +218,81 @@ final class GhlCompatController extends Controller
     }
 
     /**
+     * Create contact
+     *
+     * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
+     * @bodyParam firstName string optional Contact first name. Also accepts `first_name`. Example: Jane
+     * @bodyParam lastName string optional Contact last name. Also accepts `last_name`. Example: Doe
+     * @bodyParam email string optional Contact email. At least one of email or phone is required. Example: jane@example.com
+     * @bodyParam phone string optional Contact phone. At least one of email or phone is required. Example: +919910023290
+     * @bodyParam companyName string optional Company name. Also accepts `company_name`. Example: Acme Corp
+     * @bodyParam address string optional Street address. Example: 123 Main St
+     * @bodyParam city string optional City. Example: Mumbai
+     * @bodyParam state string optional State or province. Example: MH
+     * @bodyParam postalCode string optional Postal or ZIP code. Also accepts `postal_code` or `pincode`. Example: 400001
+     * @bodyParam country string optional Country. Example: IN
+     * @bodyParam tags string[] optional Tag labels. Example: ["lead","vip"]
+     * @bodyParam source string optional Lead source. Example: mobile app
+     * @bodyParam assignedTo string optional Assigned user id in the integrated CRM. Also accepts `assigned_to`. Example: 5
+     *
+     * @response 201 {"success":true,"status":true,"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com","city":"Mumbai","postalCode":"400001"}}
+     */
+    public function createContact(Request $request): JsonResponse
+    {
+        ['tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
+
+        $data = $request->validate([
+            'firstName' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'lastName' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'companyName' => ['nullable', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'postalCode' => ['nullable', 'string', 'max:50'],
+            'postal_code' => ['nullable', 'string', 'max:50'],
+            'pincode' => ['nullable', 'string', 'max:50'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'timezone' => ['nullable', 'string', 'max:100'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'max:255'],
+            'assignedTo' => ['nullable', 'string', 'max:255'],
+            'assigned_to' => ['nullable', 'string', 'max:255'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['string', 'max:255'],
+        ]);
+
+        $email = trim((string) ($data['email'] ?? ''));
+        $phone = trim((string) ($data['phone'] ?? ''));
+
+        if ($email === '' && $phone === '') {
+            throw ValidationException::withMessages([
+                'email' => ['Either email or phone is required.'],
+            ]);
+        }
+
+        $payload = $this->bodyWithoutLocalContext($request, $tenant);
+
+        if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->myCrmSync->createContact($tenant, $payload));
+        }
+
+        if ($this->isZohoTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->zoho->createContact($tenant, $payload));
+        }
+
+        return $this->proxyArray(fn () => $this->ghl->createContact(
+            $tenant,
+            $this->bodyWithoutLocalContext($request, $tenant, defaultLocationId: true)
+        ));
+    }
+
+    /**
      * List contact notes
      *
      * @queryParam user_id int required Local MysimConnect user id returned by OTP verification. Example: 1

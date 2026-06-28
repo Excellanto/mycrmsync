@@ -113,6 +113,37 @@ final class ZohoCrmApiClient
 
     /**
      * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function createContact(Tenant $tenant, array $body): array
+    {
+        $record = $this->createContactRecord($body);
+        $response = $this->request($tenant, 'POST', '/Contacts', json: [
+            'data' => [$record],
+        ]);
+        $json = $this->successfulJson($response);
+        $contactId = trim((string) data_get($json, 'data.0.details.id', ''));
+
+        if ($contactId === '') {
+            $message = trim((string) data_get($json, 'data.0.message', ''));
+
+            throw new RuntimeException(
+                $message !== '' ? $message : 'Contact creation failed.',
+                502
+            );
+        }
+
+        [$contact, $status] = $this->getContact($tenant, $contactId);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $contact,
+        ], $status];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
      * @return array{0: array<string, mixed>, 1: int}
      */
     public function addContactTags(Tenant $tenant, string $contactId, array $body): array
@@ -718,5 +749,50 @@ final class ZohoCrmApiClient
         }
 
         return 'Zoho CRM API request failed (HTTP '.$response->status().').';
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function createContactRecord(array $body): array
+    {
+        $firstName = trim((string) ($body['firstName'] ?? $body['first_name'] ?? ''));
+        $lastName = trim((string) ($body['lastName'] ?? $body['last_name'] ?? ''));
+
+        if ($lastName === '') {
+            $lastName = $firstName !== '' ? $firstName : 'Contact';
+        }
+
+        $record = array_filter([
+            'First_Name' => $firstName,
+            'Last_Name' => $lastName,
+            'Email' => trim((string) ($body['email'] ?? '')),
+            'Phone' => trim((string) ($body['phone'] ?? '')),
+            'Account_Name' => trim((string) ($body['companyName'] ?? $body['company_name'] ?? '')),
+            'Mailing_Street' => trim((string) ($body['address'] ?? '')),
+            'Mailing_City' => trim((string) ($body['city'] ?? '')),
+            'Mailing_State' => trim((string) ($body['state'] ?? '')),
+            'Mailing_Zip' => trim((string) ($body['postalCode'] ?? $body['postal_code'] ?? $body['pincode'] ?? '')),
+            'Mailing_Country' => trim((string) ($body['country'] ?? '')),
+            'Website' => trim((string) ($body['website'] ?? '')),
+            'Lead_Source' => trim((string) ($body['source'] ?? '')),
+            'Contact_Type' => trim((string) ($body['type'] ?? '')),
+        ], fn ($value): bool => $value !== '' && $value !== null);
+
+        $ownerId = trim((string) ($body['assignedTo'] ?? $body['assigned_to'] ?? ''));
+        if ($ownerId !== '') {
+            $record['Owner'] = ['id' => $ownerId];
+        }
+
+        $tags = $body['tags'] ?? null;
+        if (is_array($tags) && $tags !== []) {
+            $record['Tag'] = array_values(array_filter(array_map(
+                fn ($tag) => ['name' => trim((string) $tag)],
+                $tags
+            ), fn (array $tag): bool => $tag['name'] !== ''));
+        }
+
+        return $record;
     }
 }

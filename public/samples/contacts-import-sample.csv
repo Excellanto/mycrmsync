@@ -1,0 +1,4 @@
+First Name,Last Name,Email,Phone,Company,Tags,Source,Address,City,State,Pincode,Country
+Jane,Doe,jane.doe@example.com,+1 555 0100,Acme Corp,"lead, vip",Website,123 Main St,New York,NY,10001,USA
+John,Smith,john.smith@example.com,+1 555 0101,Beta LLC,prospect,Referral,456 Oak Ave,Los Angeles,CA,90001,USA
+Maria,Garcia,maria@example.com,+1 555 0102,,customer,Trade show,789 Pine Rd,Chicago,IL,60601,USA

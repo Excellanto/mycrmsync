@@ -9,6 +9,7 @@ use App\Models\Contact;
 use App\Models\ContactNote;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Contacts\ContactImportService;
 use App\Services\Contacts\ContactService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class ContactController extends Controller
 {
     public function __construct(
         private ContactService $contacts,
+        private ContactImportService $contactImport,
         private MyCrmSyncContactMapper $mapper = new MyCrmSyncContactMapper,
     ) {}
 
@@ -77,6 +79,64 @@ class ContactController extends Controller
         return redirect()
             ->route('admin.contacts.index', $this->indexQueryParams($request, $tenantId))
             ->with('success', 'Contact created successfully.');
+    }
+
+    public function previewImport(Request $request): JsonResponse
+    {
+        $this->authorize('create', Contact::class);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:10240'],
+        ]);
+
+        $rows = $this->contactImport->parseFile($request->file('file'));
+
+        return response()->json([
+            'rows' => $rows,
+            'total' => count($rows),
+            'importable' => collect($rows)->where('importable', true)->count(),
+        ]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $this->authorize('create', Contact::class);
+
+        $user = Auth::user();
+        $tenantId = $this->resolveTenantId($request, $user);
+        $tenant = Tenant::query()->findOrFail($tenantId);
+        $this->contacts->assertMyCrmSyncTenant($tenant);
+
+        $data = $request->validate([
+            'contacts' => ['required', 'array', 'min:1'],
+            'contacts.*.index' => ['nullable', 'integer'],
+            'contacts.*.first_name' => ['nullable', 'string', 'max:255'],
+            'contacts.*.last_name' => ['nullable', 'string', 'max:255'],
+            'contacts.*.email' => ['nullable', 'string', 'email', 'max:255'],
+            'contacts.*.phone' => ['nullable', 'string', 'max:50'],
+            'contacts.*.company_name' => ['nullable', 'string', 'max:255'],
+            'contacts.*.source' => ['nullable', 'string', 'max:255'],
+            'contacts.*.city' => ['nullable', 'string', 'max:255'],
+            'contacts.*.state' => ['nullable', 'string', 'max:255'],
+            'contacts.*.country' => ['nullable', 'string', 'max:255'],
+            'contacts.*.address' => ['nullable', 'string', 'max:500'],
+            'contacts.*.postal_code' => ['nullable', 'string', 'max:50'],
+            'contacts.*.website' => ['nullable', 'string', 'max:255'],
+            'contacts.*.tags' => ['nullable', 'array'],
+            'contacts.*.tags.*' => ['string', 'max:255'],
+        ]);
+
+        $result = $this->contacts->importMany($tenantId, $data['contacts']);
+
+        return response()->json([
+            'success' => true,
+            'created' => $result['created'],
+            'skipped' => $result['skipped'],
+            'errors' => $result['errors'],
+            'message' => $result['created'] > 0
+                ? "{$result['created']} contact(s) imported successfully."
+                : 'No contacts were imported.',
+        ]);
     }
 
     public function update(Request $request, Contact $contact): RedirectResponse

@@ -50,6 +50,21 @@ final class MyCrmSyncCrmApiClient
 
     /**
      * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function createContact(Tenant $tenant, array $body): array
+    {
+        $contact = $this->contacts->create($tenant->id, $body);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $this->mapper->mapContact($contact)->toArray(),
+        ], 201];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
      * @return array{0: array{tags: list<string>, message: string, status: bool}, 1: int}
      */
     public function addContactTags(Tenant $tenant, string $contactId, array $body): array

@@ -149,6 +149,12 @@ Route::prefix('admin')
         Route::post('/contacts', [\App\Http\Controllers\Admin\ContactController::class, 'store'])
             ->middleware('permission:contacts.create')
             ->name('contacts.store');
+        Route::post('/contacts/import/preview', [\App\Http\Controllers\Admin\ContactController::class, 'previewImport'])
+            ->middleware('permission:contacts.create')
+            ->name('contacts.import.preview');
+        Route::post('/contacts/import', [\App\Http\Controllers\Admin\ContactController::class, 'import'])
+            ->middleware('permission:contacts.create')
+            ->name('contacts.import.store');
         Route::put('/contacts/{contact}', [\App\Http\Controllers\Admin\ContactController::class, 'update'])
             ->middleware('permission:contacts.update')
             ->name('contacts.update');

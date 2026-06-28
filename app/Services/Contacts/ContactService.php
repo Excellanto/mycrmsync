@@ -102,6 +102,40 @@ final class ContactService
     }
 
     /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{created: int, skipped: int, errors: list<array{index: int, message: string}>}
+     */
+    public function importMany(int $tenantId, array $rows): array
+    {
+        $created = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($rows as $row) {
+            $index = (int) ($row['index'] ?? -1);
+
+            try {
+                $this->create($tenantId, $row);
+                $created++;
+            } catch (\Throwable $e) {
+                $skipped++;
+                $errors[] = [
+                    'index' => $index,
+                    'message' => $e instanceof ValidationException
+                        ? collect($e->errors())->flatten()->first() ?? 'Validation failed.'
+                        : 'Could not import this contact.',
+                ];
+            }
+        }
+
+        return [
+            'created' => $created,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function update(Contact $contact, array $data): Contact
@@ -290,7 +324,7 @@ final class ContactService
                 : null,
             'city' => trim((string) ($data['city'] ?? '')),
             'state' => trim((string) ($data['state'] ?? '')),
-            'postal_code' => trim((string) ($data['postal_code'] ?? $data['postalCode'] ?? '')),
+            'postal_code' => trim((string) ($data['postal_code'] ?? $data['postalCode'] ?? $data['pincode'] ?? '')),
             'address' => trim((string) ($data['address'] ?? '')),
             'country' => trim((string) ($data['country'] ?? '')),
             'website' => trim((string) ($data['website'] ?? '')),

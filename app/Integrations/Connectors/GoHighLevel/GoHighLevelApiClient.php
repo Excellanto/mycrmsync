@@ -56,6 +56,34 @@ final class GoHighLevelApiClient
 
     /**
      * @param  array<string, mixed>  $body
+     * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
+     */
+    public function createContact(Tenant $tenant, array $body): array
+    {
+        $payload = $this->createContactPayload($tenant, $body);
+        $response = $this->request(
+            $tenant,
+            'POST',
+            '/contacts/',
+            json: $payload,
+            versionOverride: '2021-07-28',
+        );
+        $json = $this->successfulJson($response);
+        $row = data_get($json, 'contact');
+
+        if (! is_array($row)) {
+            throw new RuntimeException('Contact creation failed.', 502);
+        }
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'contact' => $this->contactMapper->mapContact($row)->toArray(),
+        ], $response->status()];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
      * @return array{0: array{tags: list<string>, message: string, status: bool}, 1: int}
      */
     public function addContactTags(Tenant $tenant, string $contactId, array $body): array
@@ -599,5 +627,51 @@ final class GoHighLevelApiClient
         }
 
         return 'GoHighLevel API request failed (HTTP '.$response->status().').';
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function createContactPayload(Tenant $tenant, array $body): array
+    {
+        $email = trim((string) ($body['email'] ?? ''));
+        $phone = trim((string) ($body['phone'] ?? ''));
+
+        if ($email === '' && $phone === '') {
+            throw new RuntimeException('Either email or phone is required.', 422);
+        }
+
+        $payload = array_filter([
+            'locationId' => $this->defaultLocationId($tenant),
+            'firstName' => trim((string) ($body['firstName'] ?? $body['first_name'] ?? '')),
+            'lastName' => trim((string) ($body['lastName'] ?? $body['last_name'] ?? '')),
+            'email' => $email,
+            'phone' => $phone,
+            'companyName' => trim((string) ($body['companyName'] ?? $body['company_name'] ?? '')),
+            'address1' => trim((string) ($body['address'] ?? '')),
+            'city' => trim((string) ($body['city'] ?? '')),
+            'state' => trim((string) ($body['state'] ?? '')),
+            'postalCode' => trim((string) ($body['postalCode'] ?? $body['postal_code'] ?? $body['pincode'] ?? '')),
+            'country' => trim((string) ($body['country'] ?? '')),
+            'website' => trim((string) ($body['website'] ?? '')),
+            'source' => trim((string) ($body['source'] ?? '')),
+            'timezone' => trim((string) ($body['timezone'] ?? '')),
+        ], fn ($value): bool => $value !== '' && $value !== null);
+
+        $assignedTo = trim((string) ($body['assignedTo'] ?? $body['assigned_to'] ?? ''));
+        if ($assignedTo !== '') {
+            $payload['assignedTo'] = $assignedTo;
+        }
+
+        $tags = $body['tags'] ?? null;
+        if (is_array($tags) && $tags !== []) {
+            $payload['tags'] = array_values(array_filter(array_map(
+                fn ($tag) => trim((string) $tag),
+                $tags
+            )));
+        }
+
+        return $payload;
     }
 }

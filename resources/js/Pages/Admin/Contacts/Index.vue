@@ -2,14 +2,51 @@
 	<div>
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold">Contacts</h1>
-			<button
-				v-if="canCreate"
-				type="button"
-				class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
-				@click="openCreateModal"
-			>
-				Add Contact
-			</button>
+			<div v-if="canCreate" class="flex flex-wrap items-center gap-2">
+				<a
+					href="/samples/contacts-import-sample.csv"
+					download="contacts-import-sample.csv"
+					class="text-sm text-primary-700 underline decoration-primary-300 underline-offset-2 hover:text-primary-900 hover:decoration-primary-600"
+				>
+					Download sample file
+				</a>
+				<button
+					type="button"
+					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 px-4 py-2 text-sm text-primary-700 hover:bg-primary-50 disabled:opacity-60"
+					:disabled="importPreviewLoading"
+					@click="triggerImportFilePicker"
+				>
+					<svg
+						v-if="importPreviewLoading"
+						class="h-4 w-4 animate-spin"
+						fill="none"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						/>
+					</svg>
+					{{ importPreviewLoading ? 'Reading file…' : 'Import CSV / Excel' }}
+				</button>
+				<button
+					type="button"
+					class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
+					@click="openCreateModal"
+				>
+					Add Contact
+				</button>
+				<input
+					ref="importFileInput"
+					type="file"
+					accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+					class="hidden"
+					@change="onImportFileSelected"
+				/>
+			</div>
 		</div>
 
 		<div class="mb-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -107,6 +144,12 @@
 					</template>
 				</PColumn>
 
+				<PColumn header="City" style="width: 140px">
+					<template #body="{ data }">
+						<span class="text-sm">{{ data.city || '—' }}</span>
+					</template>
+				</PColumn>
+
 				<PColumn header="Company" style="width: 160px">
 					<template #body="{ data }">
 						<span class="text-sm">{{ data.companyName || '—' }}</span>
@@ -189,7 +232,7 @@
 			v-model:visible="contactModalVisible"
 			:header="contactModalMode === 'create' ? 'Add Contact' : 'Edit Contact'"
 			modal
-			:style="{ width: '32rem' }"
+			:style="{ width: '36rem' }"
 		>
 			<form class="space-y-4" @submit.prevent="submitContactForm">
 				<div class="grid grid-cols-2 gap-3">
@@ -213,6 +256,30 @@
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Company</label>
 					<PInputText v-model="contactForm.company_name" class="w-full" />
+				</div>
+				<div>
+					<label class="mb-1 block text-sm font-medium text-gray-700">Address</label>
+					<PInputText v-model="contactForm.address" class="w-full" />
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">City</label>
+						<PInputText v-model="contactForm.city" class="w-full" />
+					</div>
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">Pincode</label>
+						<PInputText v-model="contactForm.postal_code" class="w-full" />
+					</div>
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">State</label>
+						<PInputText v-model="contactForm.state" class="w-full" />
+					</div>
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">Country</label>
+						<PInputText v-model="contactForm.country" class="w-full" />
+					</div>
 				</div>
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Assigned to</label>
@@ -239,6 +306,152 @@
 					</button>
 				</div>
 			</form>
+		</PDialog>
+
+		<PDialog
+			v-model:visible="importModalVisible"
+			header="Import contacts"
+			modal
+			:style="{ width: '56rem' }"
+			:closable="!importProcessing"
+			:close-on-escape="!importProcessing"
+			:dismissable-mask="!importProcessing"
+			@hide="resetImportModal"
+		>
+			<div class="relative space-y-4" :class="importProcessing ? 'min-h-[16rem]' : ''">
+				<div
+					v-if="importProcessing"
+					class="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-white/90"
+				>
+					<svg class="h-10 w-10 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						/>
+					</svg>
+					<p class="mt-3 text-sm font-medium text-gray-800">
+						{{ importPreviewLoading ? 'Reading file and preparing preview…' : 'Importing contacts…' }}
+					</p>
+					<p class="mt-1 text-xs text-gray-500">Please wait, this may take a moment.</p>
+				</div>
+
+				<div v-if="importFileName" class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+					<span class="font-medium">File:</span> {{ importFileName }}
+					<span class="ml-3 text-gray-500">{{ importRows.length }} row(s) found</span>
+				</div>
+
+				<div v-if="importPreviewError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+					{{ importPreviewError }}
+				</div>
+
+				<div v-if="importRows.length" class="overflow-hidden rounded-lg border border-gray-200">
+					<div class="max-h-[28rem] overflow-auto">
+						<table class="min-w-full divide-y divide-gray-200 text-sm">
+							<thead class="sticky top-0 bg-gray-50">
+								<tr>
+									<th class="w-10 px-3 py-2 text-left">
+										<input
+											type="checkbox"
+											class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+											:checked="allImportRowsSelected"
+											:indeterminate.prop="someImportRowsSelected && !allImportRowsSelected"
+											@change="toggleSelectAllImportRows"
+										/>
+									</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Name</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Email</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Phone</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Company</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Tags</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-gray-100 bg-white">
+								<tr
+									v-for="row in importRows"
+									:key="row.index"
+									:class="row.importable ? '' : 'bg-red-50/60'"
+								>
+									<td class="px-3 py-2 align-top">
+										<input
+											type="checkbox"
+											class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+											:checked="selectedImportIndexes.has(row.index)"
+											:disabled="!row.importable"
+											@change="toggleImportRow(row.index)"
+										/>
+									</td>
+									<td class="px-3 py-2 align-top">{{ row.name || '—' }}</td>
+									<td class="px-3 py-2 align-top">{{ row.email || '—' }}</td>
+									<td class="px-3 py-2 align-top">{{ row.phone || '—' }}</td>
+									<td class="px-3 py-2 align-top">{{ row.company_name || '—' }}</td>
+									<td class="px-3 py-2 align-top">
+										<div class="flex flex-wrap gap-1">
+											<span
+												v-for="tag in row.tags || []"
+												:key="tag"
+												class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+											>
+												{{ tag }}
+											</span>
+											<span v-if="!(row.tags || []).length" class="text-gray-400">—</span>
+										</div>
+									</td>
+									<td class="px-3 py-2 align-top">
+										<span v-if="row.importable" class="text-green-700">Ready</span>
+										<span v-else class="text-red-600">{{ (row.warnings || []).join(' ') }}</span>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div v-else-if="!importPreviewLoading && !importPreviewError" class="text-sm text-gray-500">
+					Choose a CSV or Excel file to preview contacts before importing.
+				</div>
+
+				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+					<div class="text-sm text-gray-600">
+						<span v-if="selectedImportCount">{{ selectedImportCount }} selected</span>
+						<span v-else>Select contacts to import</span>
+					</div>
+					<div class="flex gap-2">
+						<button
+							type="button"
+							class="rounded-lg bg-gray-200 px-4 py-2 text-sm disabled:opacity-50"
+							:disabled="importProcessing"
+							@click="importModalVisible = false"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+							:disabled="!selectedImportCount || importProcessing"
+							@click="submitImport"
+						>
+							<svg
+								v-if="importSubmitting"
+								class="h-4 w-4 animate-spin"
+								fill="none"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								/>
+							</svg>
+							{{ importSubmitting ? 'Importing…' : `Import selected (${selectedImportCount})` }}
+						</button>
+					</div>
+				</div>
+			</div>
 		</PDialog>
 
 		<PDrawer v-model:visible="notesDrawerVisible" position="right" :style="{ width: '28rem' }" header="Contact Notes">
@@ -406,6 +619,11 @@ const contactForm = useForm({
 	email: '',
 	phone: '',
 	company_name: '',
+	address: '',
+	city: '',
+	state: '',
+	postal_code: '',
+	country: '',
 	assigned_to: '',
 	tagsInput: '',
 });
@@ -416,6 +634,11 @@ function emptyContactForm() {
 	contactForm.email = '';
 	contactForm.phone = '';
 	contactForm.company_name = '';
+	contactForm.address = '';
+	contactForm.city = '';
+	contactForm.state = '';
+	contactForm.postal_code = '';
+	contactForm.country = '';
 	contactForm.assigned_to = '';
 	contactForm.tagsInput = '';
 }
@@ -435,6 +658,11 @@ function openEditModal(contact) {
 	contactForm.email = contact.email || '';
 	contactForm.phone = contact.phone || '';
 	contactForm.company_name = contact.companyName || '';
+	contactForm.address = contact.address || '';
+	contactForm.city = contact.city || '';
+	contactForm.state = contact.state || '';
+	contactForm.postal_code = contact.postalCode || '';
+	contactForm.country = contact.country || '';
 	contactForm.assigned_to = contact.assignedTo ? String(contact.assignedTo) : '';
 	contactForm.tagsInput = (contact.tags || []).join(', ');
 	contactModalVisible.value = true;
@@ -452,6 +680,11 @@ function contactPayloadFromForm() {
 		email: contactForm.email,
 		phone: contactForm.phone,
 		company_name: contactForm.company_name,
+		address: contactForm.address,
+		city: contactForm.city,
+		state: contactForm.state,
+		postal_code: contactForm.postal_code,
+		country: contactForm.country,
 		assigned_to: contactForm.assigned_to || null,
 		tags,
 		tenant_id: filters.tenant_id || undefined,
@@ -589,6 +822,163 @@ async function deleteNote(note) {
 		notes.value = notes.value.filter((row) => row.id !== note.id);
 	} catch (err) {
 		notesError.value = err?.response?.data?.message || err.message || 'Could not delete note.';
+	}
+}
+
+const importFileInput = ref(null);
+const importModalVisible = ref(false);
+const importPreviewLoading = ref(false);
+const importSubmitting = ref(false);
+const importPreviewError = ref('');
+const importFileName = ref('');
+const importRows = ref([]);
+const selectedImportIndexes = ref(new Set());
+
+const importableRows = computed(() => importRows.value.filter((row) => row.importable));
+const selectedImportCount = computed(() => selectedImportIndexes.value.size);
+const allImportRowsSelected = computed(
+	() =>
+		importableRows.value.length > 0 &&
+		importableRows.value.every((row) => selectedImportIndexes.value.has(row.index)),
+);
+const someImportRowsSelected = computed(() =>
+	importableRows.value.some((row) => selectedImportIndexes.value.has(row.index)),
+);
+const importProcessing = computed(() => importPreviewLoading.value || importSubmitting.value);
+
+function triggerImportFilePicker() {
+	importPreviewError.value = '';
+	importFileInput.value?.click();
+}
+
+function resetImportModal() {
+	if (importProcessing.value) {
+		return;
+	}
+
+	importPreviewError.value = '';
+	importFileName.value = '';
+	importRows.value = [];
+	selectedImportIndexes.value = new Set();
+	if (importFileInput.value) {
+		importFileInput.value.value = '';
+	}
+}
+
+function selectAllImportableRows() {
+	selectedImportIndexes.value = new Set(importableRows.value.map((row) => row.index));
+}
+
+function toggleSelectAllImportRows(event) {
+	if (event.target.checked) {
+		selectAllImportableRows();
+		return;
+	}
+
+	selectedImportIndexes.value = new Set();
+}
+
+function toggleImportRow(index) {
+	const next = new Set(selectedImportIndexes.value);
+
+	if (next.has(index)) {
+		next.delete(index);
+	} else {
+		next.add(index);
+	}
+
+	selectedImportIndexes.value = next;
+}
+
+async function onImportFileSelected(event) {
+	const file = event.target.files?.[0];
+
+	if (!file) {
+		return;
+	}
+
+	importModalVisible.value = true;
+	importPreviewLoading.value = true;
+	importPreviewError.value = '';
+	importFileName.value = file.name;
+	importRows.value = [];
+	selectedImportIndexes.value = new Set();
+
+	const formData = new FormData();
+	formData.append('file', file);
+
+	if (filters.tenant_id) {
+		formData.append('tenant_id', filters.tenant_id);
+	}
+
+	try {
+		const { data } = await axios.post(route('admin.contacts.import.preview'), formData, {
+			headers: { 'Content-Type': 'multipart/form-data' },
+		});
+
+		importRows.value = Array.isArray(data.rows) ? data.rows : [];
+		selectAllImportableRows();
+
+		if (importRows.value.length === 0) {
+			importPreviewError.value = 'No contact rows were found in this file.';
+		}
+	} catch (err) {
+		const validationMessage = err?.response?.data?.errors?.file?.[0];
+		importPreviewError.value =
+			validationMessage || err?.response?.data?.message || err.message || 'Could not read the file.';
+	} finally {
+		importPreviewLoading.value = false;
+	}
+}
+
+async function submitImport() {
+	if (!selectedImportCount.value) {
+		return;
+	}
+
+	const contacts = importRows.value
+		.filter((row) => selectedImportIndexes.value.has(row.index))
+		.map((row) => ({
+			index: row.index,
+			first_name: row.first_name || '',
+			last_name: row.last_name || '',
+			email: row.email || '',
+			phone: row.phone || '',
+			company_name: row.company_name || '',
+			source: row.source || '',
+			city: row.city || '',
+			state: row.state || '',
+			country: row.country || '',
+			address: row.address || '',
+			postal_code: row.postal_code || '',
+			website: row.website || '',
+			tags: row.tags || [],
+		}));
+
+	importSubmitting.value = true;
+	importPreviewError.value = '';
+
+	try {
+		const { data } = await axios.post(route('admin.contacts.import.store'), {
+			contacts,
+			tenant_id: filters.tenant_id || undefined,
+		});
+
+		importModalVisible.value = false;
+		resetImportModal();
+		router.reload({ preserveScroll: true });
+
+		if (data.message) {
+			window.alert(data.message);
+		}
+	} catch (err) {
+		const validationMessage = Object.values(err?.response?.data?.errors || {})
+			.flat()
+			.find(Boolean);
+		importPreviewError.value =
+			validationMessage || err?.response?.data?.message || err.message || 'Import failed.';
+	} finally {
+		importSubmitting.value = false;
 	}
 }
 </script>

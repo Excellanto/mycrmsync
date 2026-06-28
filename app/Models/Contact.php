@@ -57,6 +57,6 @@ class Contact extends Model
 
     public function scopeForTenantId(Builder $query, int $tenantId): Builder
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where($query->qualifyColumn('tenant_id'), $tenantId);
     }
 }
