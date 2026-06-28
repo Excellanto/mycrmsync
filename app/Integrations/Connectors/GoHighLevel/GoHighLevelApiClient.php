@@ -83,6 +83,27 @@ final class GoHighLevelApiClient
     }
 
     /**
+     * @return array{0: array{success: bool, status: bool, message: string, contactId: string}, 1: int}
+     */
+    public function deleteContact(Tenant $tenant, string $contactId): array
+    {
+        $response = $this->request(
+            $tenant,
+            'DELETE',
+            "/contacts/{$contactId}",
+            versionOverride: '2021-07-28',
+        );
+        $this->successfulJson($response);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'message' => 'Contact deleted.',
+            'contactId' => $contactId,
+        ], $response->status()];
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @return array{0: array{tags: list<string>, message: string, status: bool}, 1: int}
      */

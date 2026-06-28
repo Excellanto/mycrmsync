@@ -58,6 +58,7 @@ Route::prefix('crm')
         Route::get('/contact', [ContactController::class, 'show'])->name('api.crm.contact.show');
         Route::post('/contacts/search', [GhlCompatController::class, 'searchContacts'])->name('api.crm.contacts.search');
         Route::post('/contacts/add', [GhlCompatController::class, 'createContact'])->name('api.crm.contacts.store');
+        Route::post('/contacts/delete', [GhlCompatController::class, 'deleteContact'])->name('api.crm.contacts.destroy');
         Route::get('/users', [GhlCompatController::class, 'listUsers'])->name('api.crm.users.index');
         Route::get('/tags', [GhlCompatController::class, 'listLocationTags'])->name('api.crm.tags.index');
 

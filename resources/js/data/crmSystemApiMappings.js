@@ -119,6 +119,33 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 			},
 		},
 		{
+			key: 'ghl.contacts.destroy',
+			name: 'Delete contact',
+			crmMethod: 'DELETE',
+			crmPath: '/contacts/{contactId}',
+			crmBaseUrl: GHL_BASE,
+			systemMethod: 'POST',
+			systemPath: '/api/crm/contacts/delete',
+			routeName: 'api.crm.contacts.destroy',
+			headersNote:
+				'Integrated system: Bearer + Version 2021-07-28. Application API: Bearer (API JWT). Content-Type: application/json.',
+			request: {
+				query: null,
+				path: null,
+				body: {
+					user_id: 1,
+					contactId: GHL_SAMPLE_CONTACT_ID,
+				},
+			},
+			responseStatus: 200,
+			responseBody: {
+				success: true,
+				status: true,
+				message: 'Contact deleted.',
+				contactId: GHL_SAMPLE_CONTACT_ID,
+			},
+		},
+		{
 			key: 'ghl.users.index',
 			name: 'List users',
 			crmMethod: 'GET',

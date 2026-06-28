@@ -143,6 +143,38 @@ final class ZohoCrmApiClient
     }
 
     /**
+     * @return array{0: array{success: bool, status: bool, message: string, contactId: string}, 1: int}
+     */
+    public function deleteContact(Tenant $tenant, string $contactId): array
+    {
+        if (preg_match('/^\d+$/', $contactId) !== 1) {
+            throw new RuntimeException('The selected user is linked to Zoho. Use a Zoho contact id from /api/crm/contacts or /api/crm/contacts/search.', 422);
+        }
+
+        $response = $this->request($tenant, 'DELETE', '/Contacts', [
+            'ids' => $contactId,
+        ]);
+        $json = $this->successfulJson($response);
+        $code = strtoupper(trim((string) data_get($json, 'data.0.code', 'SUCCESS')));
+
+        if ($code !== 'SUCCESS') {
+            $message = trim((string) data_get($json, 'data.0.message', ''));
+
+            throw new RuntimeException(
+                $message !== '' ? $message : 'Contact deletion failed.',
+                502
+            );
+        }
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'message' => 'Contact deleted.',
+            'contactId' => $contactId,
+        ], $response->status() === 204 ? 200 : $response->status()];
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @return array{0: array<string, mixed>, 1: int}
      */

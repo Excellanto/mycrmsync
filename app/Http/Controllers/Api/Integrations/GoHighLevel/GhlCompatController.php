@@ -293,6 +293,38 @@ final class GhlCompatController extends Controller
     }
 
     /**
+     * Delete contact
+     *
+     * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
+     * @bodyParam contactId string required CRM contact id from list/search. Also accepts `contact`, `contact_id`, or `contactid`. Example: 550e8400-e29b-41d4-a716-446655440000
+     *
+     * @response 200 {"success":true,"status":true,"message":"Contact deleted.","contactId":"550e8400-e29b-41d4-a716-446655440000"}
+     */
+    public function deleteContact(Request $request): JsonResponse
+    {
+        ['tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
+
+        $data = $request->validate($this->contactIdInputRules());
+        $contactId = $this->resolvedContactIdFromData($data);
+
+        if ($contactId === '') {
+            throw ValidationException::withMessages([
+                'contactId' => ['The contactId field is required.'],
+            ]);
+        }
+
+        if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->myCrmSync->deleteContact($tenant, $contactId));
+        }
+
+        if ($this->isZohoTenant($tenant)) {
+            return $this->proxyArray(fn () => $this->zoho->deleteContact($tenant, $contactId));
+        }
+
+        return $this->proxyArray(fn () => $this->ghl->deleteContact($tenant, $contactId));
+    }
+
+    /**
      * List contact notes
      *
      * @queryParam user_id int required Local MysimConnect user id returned by OTP verification. Example: 1

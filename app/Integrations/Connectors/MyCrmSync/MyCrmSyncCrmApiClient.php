@@ -64,6 +64,22 @@ final class MyCrmSyncCrmApiClient
     }
 
     /**
+     * @return array{0: array{success: bool, status: bool, message: string, contactId: string}, 1: int}
+     */
+    public function deleteContact(Tenant $tenant, string $contactId): array
+    {
+        $contact = $this->contacts->findForTenant($tenant->id, $contactId);
+        $this->contacts->delete($contact);
+
+        return [[
+            'success' => true,
+            'status' => true,
+            'message' => 'Contact deleted.',
+            'contactId' => $contactId,
+        ], 200];
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @return array{0: array{tags: list<string>, message: string, status: bool}, 1: int}
      */
