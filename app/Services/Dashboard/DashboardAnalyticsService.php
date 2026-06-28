@@ -578,15 +578,26 @@ final class DashboardAnalyticsService
             ->whereHas('notes')
             ->count();
 
-        $byAssigned = Contact::query()
-            ->where('contacts.tenant_id', $tenantId)
-            ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id')
-            ->selectRaw("COALESCE(users.name, 'Unassigned') as label, COUNT(*) as count")
-            ->groupBy('users.name')
+        $assignedRows = Contact::query()
+            ->forTenantId($tenantId)
+            ->selectRaw('assigned_to, COUNT(*) as count')
+            ->groupBy('assigned_to')
             ->orderByDesc('count')
             ->limit(8)
-            ->pluck('count', 'label')
-            ->all();
+            ->get();
+
+        $assignedUserIds = $assignedRows->pluck('assigned_to')->filter()->unique()->values();
+        $assignedUserNames = $assignedUserIds->isEmpty()
+            ? collect()
+            : User::query()->whereIn('id', $assignedUserIds)->pluck('name', 'id');
+
+        $byAssigned = $assignedRows->mapWithKeys(function ($row) use ($assignedUserNames) {
+            $label = $row->assigned_to
+                ? ($assignedUserNames[$row->assigned_to] ?? 'Unknown')
+                : 'Unassigned';
+
+            return [$label => (int) $row->count];
+        })->all();
 
         $callsLinked = (clone $callQuery)
             ->whereNotNull('contact_id')
