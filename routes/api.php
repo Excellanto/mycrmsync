@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\EmailOtpAuthController;
+use App\Http\Controllers\Api\Crm\BusinessCardController;
 use App\Http\Controllers\Api\Crm\CallLogController;
 use App\Http\Controllers\Api\Crm\CallRecordingController;
 use App\Http\Controllers\Api\Crm\ContactController;
@@ -70,6 +71,8 @@ Route::prefix('crm')
         Route::post('/contacts/notes/add', [GhlCompatController::class, 'createContactNote'])->name('api.crm.contacts.notes.store');
         Route::post('/contacts/notes/update', [GhlCompatController::class, 'updateContactNote'])->name('api.crm.contacts.notes.update');
         Route::post('/contacts/notes/delete', [GhlCompatController::class, 'deleteContactNote'])->name('api.crm.contacts.notes.destroy');
+
+        Route::post('/business-cards/parse', [BusinessCardController::class, 'parse'])->name('api.crm.business-cards.parse');
 
         Route::post('/voice-notes/process', [VoiceNoteController::class, 'process'])->name('api.crm.voice-notes.process');
         Route::post('/call-recordings/transcribe', [CallRecordingController::class, 'transcribe'])->name('api.crm.call-recordings.transcribe');

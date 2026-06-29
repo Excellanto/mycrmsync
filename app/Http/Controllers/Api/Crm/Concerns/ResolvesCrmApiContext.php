@@ -53,4 +53,43 @@ trait ResolvesCrmApiContext
 
         return ['user' => $user, 'tenant' => $tenant];
     }
+
+    /**
+     * Same as {@see resolveCrmApiContext()} but without requiring a CRM integration
+     * (e.g. OpenAI-only features such as business card parsing).
+     *
+     * @return array{user: User, tenant: Tenant}
+     */
+    protected function resolveTenantApiContext(Request $request): array
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $authenticated = $request->user();
+        if (! $authenticated instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        if ((int) $data['user_id'] !== $authenticated->id) {
+            throw ValidationException::withMessages([
+                'user_id' => ['The user_id does not match the authenticated user.'],
+            ]);
+        }
+
+        $user = User::query()
+            ->with('tenant')
+            ->whereKey($authenticated->id)
+            ->firstOrFail();
+
+        $tenant = $user->tenant;
+
+        if ($tenant === null) {
+            throw ValidationException::withMessages([
+                'user_id' => ['The selected user is not linked to a tenant.'],
+            ]);
+        }
+
+        return ['user' => $user, 'tenant' => $tenant];
+    }
 }

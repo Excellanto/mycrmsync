@@ -3,7 +3,7 @@
 JSON API under /api (auth email OTP, CRM compatibility layer). Admin features live in the web app.
 
 <aside>
-    <strong>Base URL</strong>: <code>http://127.0.0.1:9000</code>
+    <strong>Base URL</strong>: <code>http://127.0.0.1:8000</code>
 </aside>
 
     JSON routes are mounted under <code>/api</code> (see the base URL above). Many admin features are served from the Inertia web app under <code>/admin</code> instead of this API.

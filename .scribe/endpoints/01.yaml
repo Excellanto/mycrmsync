@@ -372,7 +372,13 @@ endpoints:
     cleanBodyParameters:
       limit: 1
     fileParameters: []
-    responses: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"contacts":[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","calls":{"total_dialed":4,"total_talk_time":620,"total_received":3,"total_notes":2}}],"meta":{"total":1}}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -599,7 +605,531 @@ endpoints:
       user_id: 1
       fields: 'First_Name,Last_Name,Email'
     fileParameters: []
-    responses: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"contacts":[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","calls":{"total_dialed":4,"total_talk_time":620,"total_received":3,"total_notes":2}}],"total":1}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/add
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create contact'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      firstName:
+        custom: []
+        name: firstName
+        description: 'optional Contact first name. Also accepts `first_name`.'
+        required: false
+        example: Jane
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      lastName:
+        custom: []
+        name: lastName
+        description: 'optional Contact last name. Also accepts `last_name`.'
+        required: false
+        example: Doe
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      email:
+        custom: []
+        name: email
+        description: 'optional Contact email. At least one of email or phone is required.'
+        required: false
+        example: jane@example.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      phone:
+        custom: []
+        name: phone
+        description: 'optional Contact phone. At least one of email or phone is required.'
+        required: false
+        example: '+919910023290'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      companyName:
+        custom: []
+        name: companyName
+        description: 'optional Company name. Also accepts `company_name`.'
+        required: false
+        example: 'Acme Corp'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      address:
+        custom: []
+        name: address
+        description: 'optional Street address.'
+        required: false
+        example: '123 Main St'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      city:
+        custom: []
+        name: city
+        description: 'optional City.'
+        required: false
+        example: Mumbai
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      state:
+        custom: []
+        name: state
+        description: 'optional State or province.'
+        required: false
+        example: MH
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      postalCode:
+        custom: []
+        name: postalCode
+        description: 'optional Postal or ZIP code. Also accepts `postal_code` or `pincode`.'
+        required: false
+        example: '400001'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      country:
+        custom: []
+        name: country
+        description: 'optional Country.'
+        required: false
+        example: IN
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      tags:
+        custom: []
+        name: tags
+        description: 'optional Tag labels.'
+        required: false
+        example:
+          - lead
+          - vip
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      source:
+        custom: []
+        name: source
+        description: 'optional Lead source.'
+        required: false
+        example: 'mobile app'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      assignedTo:
+        custom: []
+        name: assignedTo
+        description: 'optional Assigned user id in the integrated CRM. Also accepts `assigned_to`.'
+        required: false
+        example: '5'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      user_id: 1
+      firstName: Jane
+      lastName: Doe
+      email: jane@example.com
+      phone: '+919910023290'
+      companyName: 'Acme Corp'
+      address: '123 Main St'
+      city: Mumbai
+      state: MH
+      postalCode: '400001'
+      country: IN
+      tags:
+        - lead
+        - vip
+      source: 'mobile app'
+      assignedTo: '5'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 201
+        content: '{"success":true,"status":true,"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com","city":"Mumbai","postalCode":"400001"}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/update
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update contact'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search. Also accepts `contact`, `contact_id`, or `contactid`.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      firstName:
+        custom: []
+        name: firstName
+        description: 'optional Contact first name. Also accepts `first_name`.'
+        required: false
+        example: Jane
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      lastName:
+        custom: []
+        name: lastName
+        description: 'optional Contact last name. Also accepts `last_name`.'
+        required: false
+        example: Doe
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      email:
+        custom: []
+        name: email
+        description: 'optional Contact email.'
+        required: false
+        example: jane@example.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      phone:
+        custom: []
+        name: phone
+        description: 'optional Contact phone.'
+        required: false
+        example: '+919910023290'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      companyName:
+        custom: []
+        name: companyName
+        description: 'optional Company name. Also accepts `company_name`.'
+        required: false
+        example: 'Acme Corp'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      address:
+        custom: []
+        name: address
+        description: 'optional Street address.'
+        required: false
+        example: '123 Main St'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      city:
+        custom: []
+        name: city
+        description: 'optional City.'
+        required: false
+        example: Mumbai
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      state:
+        custom: []
+        name: state
+        description: 'optional State or province.'
+        required: false
+        example: MH
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      postalCode:
+        custom: []
+        name: postalCode
+        description: 'optional Postal or ZIP code. Also accepts `postal_code` or `pincode`.'
+        required: false
+        example: '400001'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      country:
+        custom: []
+        name: country
+        description: 'optional Country.'
+        required: false
+        example: IN
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      tags:
+        custom: []
+        name: tags
+        description: 'optional Tag labels.'
+        required: false
+        example:
+          - lead
+          - vip
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      source:
+        custom: []
+        name: source
+        description: 'optional Lead source.'
+        required: false
+        example: 'mobile app'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      assignedTo:
+        custom: []
+        name: assignedTo
+        description: 'optional Assigned user id in the integrated CRM. Also accepts `assigned_to`.'
+        required: false
+        example: '5'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      user_id: 1
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+      firstName: Jane
+      lastName: Doe
+      email: jane@example.com
+      phone: '+919910023290'
+      companyName: 'Acme Corp'
+      address: '123 Main St'
+      city: Mumbai
+      state: MH
+      postalCode: '400001'
+      country: IN
+      tags:
+        - lead
+        - vip
+      source: 'mobile app'
+      assignedTo: '5'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"status":true,"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","email":"jane@example.com","city":"Mumbai","postalCode":"400001"}}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/crm/contacts/delete
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Internal routes mirroring Lead Connector (GoHighLevel) API paths and payloads under `/api/crm`.
+        External reference: https://services.leadconnectorhq.com/
+
+        Requires `Authorization: Bearer <token>` from email OTP verify. `user_id` must match the authenticated user.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete contact'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user (same as OTP verify response).'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      contactId:
+        custom: []
+        name: contactId
+        description: 'CRM contact id from list/search. Also accepts `contact`, `contact_id`, or `contactid`.'
+        required: true
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      user_id: 1
+      contactId: 550e8400-e29b-41d4-a716-446655440000
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"status":true,"message":"Contact deleted.","contactId":"550e8400-e29b-41d4-a716-446655440000"}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -1275,6 +1805,79 @@ endpoints:
     custom: []
     httpMethods:
       - POST
+    uri: api/crm/business-cards/parse
+    metadata:
+      custom: []
+      groupName: CRM
+      groupDescription: |-
+
+        Parse business card images into CRM contact fields using OpenAI vision.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Parse business card'
+      description: 'Upload a business card photo and receive structured contact fields for the add-contact form.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {YOUR_API_TOKEN}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      image:
+        custom: []
+        name: image
+        description: 'Business card photo (JPEG, PNG, WebP, HEIC, max 10 MB).'
+        required: true
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      locale:
+        custom: []
+        name: locale
+        description: 'optional BCP 47-style locale hint for parsing (e.g. en_IN).'
+        required: false
+        example: en_IN
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      user_id:
+        custom: []
+        name: user_id
+        description: 'Must match the authenticated user.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      locale: en_IN
+      user_id: 1
+    fileParameters:
+      image: null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
     uri: api/crm/voice-notes/process
     metadata:
       custom: []
@@ -1494,14 +2097,14 @@ endpoints:
         name: callRecordingId
         description: ''
         required: true
-        example: architecto
+        example: a203ebfa-e30f-43f0-b529-c2b55db6099c
         type: string
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      callRecordingId: architecto
+      callRecordingId: a203ebfa-e30f-43f0-b529-c2b55db6099c
     queryParameters:
       user_id:
         custom: []
