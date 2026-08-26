@@ -28,6 +28,9 @@ return [
     'supabase' => [
         'url' => env('SUPABASE_URL'),
         'key' => env('SUPABASE_KEY'),
+        'access_key' => env('SUPABASE_ACCESS_KEY_ID'),
+        'secret_key' => env('SUPABASE_SECRET_ACCESS_KEY'),
+        'region' => env('SUPABASE_REGION'),
         'bucket' => env('SUPABASE_BUCKET'),
         'voicenotes_bucket' => env('SUPABASE_VOICENOTES_BUCKET', 'voicenotes'),
     ],

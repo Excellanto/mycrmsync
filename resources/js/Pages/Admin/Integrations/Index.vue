@@ -192,11 +192,23 @@
 								@submit.prevent="submitStorage('supabase')"
 								class="max-w-xl space-y-5"
 							>
+								<p class="text-sm text-gray-600">
+									Create S3 credentials in Supabase → Storage → S3 Connection. Uploads for this tenant use that bucket.
+									The bucket should be public so file URLs can be opened.
+								</p>
+
 								<div
 									v-if="storage.providers.supabase.using_system_fallback"
 									class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
 								>
 									Using system Supabase settings from .env. Enter values below to override for this tenant.
+								</div>
+
+								<div
+									v-else-if="storage.providers.supabase.has_legacy_key"
+									class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+								>
+									This tenant still has a service role key. Add the S3 access key and secret so tenant uploads use Supabase.
 								</div>
 
 								<div>
@@ -212,17 +224,43 @@
 								</div>
 
 								<div>
-									<label for="supabase_key" class="block text-sm font-medium text-gray-700">Service Role Key</label>
+									<label for="supabase_access_key" class="block text-sm font-medium text-gray-700">Access Key ID</label>
 									<input
-										id="supabase_key"
-										v-model="supabaseForm.key"
-										type="password"
-										autocomplete="new-password"
-										:placeholder="storage.providers.supabase.has_key ? '••••••••' : 'eyJ…'"
+										id="supabase_access_key"
+										v-model="supabaseForm.access_key"
+										type="text"
+										autocomplete="off"
+										placeholder="From Storage → S3 Connection"
 										class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
 									/>
-									<p class="mt-1 text-xs text-gray-500">Leave blank to keep the existing key.</p>
-									<p v-if="supabaseForm.errors.key" class="mt-1 text-sm text-red-600">{{ supabaseForm.errors.key }}</p>
+									<p v-if="supabaseForm.errors.access_key" class="mt-1 text-sm text-red-600">{{ supabaseForm.errors.access_key }}</p>
+								</div>
+
+								<div>
+									<label for="supabase_secret_key" class="block text-sm font-medium text-gray-700">Secret Access Key</label>
+									<input
+										id="supabase_secret_key"
+										v-model="supabaseForm.secret_key"
+										type="password"
+										autocomplete="new-password"
+										:placeholder="storage.providers.supabase.has_secret ? '••••••••' : ''"
+										class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+									/>
+									<p class="mt-1 text-xs text-gray-500">Leave blank to keep the existing secret.</p>
+									<p v-if="supabaseForm.errors.secret_key" class="mt-1 text-sm text-red-600">{{ supabaseForm.errors.secret_key }}</p>
+								</div>
+
+								<div>
+									<label for="supabase_region" class="block text-sm font-medium text-gray-700">Region</label>
+									<input
+										id="supabase_region"
+										v-model="supabaseForm.region"
+										type="text"
+										placeholder="ap-south-1"
+										class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+									/>
+									<p class="mt-1 text-xs text-gray-500">Project region from Storage → S3 Connection.</p>
+									<p v-if="supabaseForm.errors.region" class="mt-1 text-sm text-red-600">{{ supabaseForm.errors.region }}</p>
 								</div>
 
 								<div>
@@ -545,7 +583,9 @@ const openAiForm = useForm({
 
 const supabaseForm = useForm({
 	url: props.storage?.providers?.supabase?.url || '',
-	key: '',
+	access_key: props.storage?.providers?.supabase?.access_key || '',
+	secret_key: '',
+	region: props.storage?.providers?.supabase?.region || '',
 	bucket: props.storage?.providers?.supabase?.bucket || '',
 	is_default: props.storage?.providers?.supabase?.is_default || false,
 	tenant_id: props.selectedTenantId || null,
@@ -574,7 +614,14 @@ const r2Form = useForm({
 });
 
 const supabaseHasInput = computed(
-	() => Boolean(supabaseForm.url?.trim() || supabaseForm.key?.trim() || supabaseForm.bucket?.trim())
+	() =>
+		Boolean(
+			supabaseForm.url?.trim() ||
+				supabaseForm.access_key?.trim() ||
+				supabaseForm.secret_key?.trim() ||
+				supabaseForm.region?.trim() ||
+				supabaseForm.bucket?.trim()
+		)
 );
 const googleDriveHasInput = computed(
 	() => Boolean(googleDriveForm.client_id?.trim() || googleDriveForm.client_secret?.trim())
@@ -612,9 +659,11 @@ watch(
 		if (!storage?.providers) return;
 
 		supabaseForm.url = storage.providers.supabase?.url || '';
+		supabaseForm.access_key = storage.providers.supabase?.access_key || '';
+		supabaseForm.region = storage.providers.supabase?.region || '';
 		supabaseForm.bucket = storage.providers.supabase?.bucket || '';
 		supabaseForm.is_default = storage.providers.supabase?.is_default || false;
-		supabaseForm.key = '';
+		supabaseForm.secret_key = '';
 
 		googleDriveForm.client_id = storage.providers.google_drive?.client_id || '';
 		googleDriveForm.folder_id = storage.providers.google_drive?.folder_id || '';
@@ -676,7 +725,7 @@ function submitStorage(provider) {
 	form.put(route('admin.integrations.storage.update', provider), {
 		preserveScroll: true,
 		onSuccess: () => {
-			if (provider === 'supabase') form.key = '';
+			if (provider === 'supabase') form.secret_key = '';
 			if (provider === 'google_drive') form.client_secret = '';
 			if (provider === 'dropbox') {
 				form.app_secret = '';

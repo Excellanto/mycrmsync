@@ -443,6 +443,7 @@
 						"
 					>
 						<Link
+							v-if="showLanguagesNav"
 							:href="route('admin.languages.index')"
 							:class="subNavClass(isPathActive('/admin/languages'), sidebarCollapsed)"
 							title="Languages"

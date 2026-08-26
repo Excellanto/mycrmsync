@@ -9,11 +9,13 @@ class IntegrationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('settings.view');
+        return $user->can('settings.view')
+            || $user->can('nav.settings.data-configuration.show');
     }
 
     public function update(User $user, Integration $integration): bool
     {
-        return $user->can('settings.update');
+        return $user->can('settings.update')
+            || $user->can('nav.settings.data-configuration.show');
     }
 }

@@ -89,7 +89,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Upload company logo (400×100px, 4:1) to R2 under Tenant-Profile-Images/.
+     * Upload company logo (400×100px, 4:1) to tenant storage under Tenant-Profile-Images/.
      */
     public function storeLogo(Request $request, TenantLogoService $logos): RedirectResponse|JsonResponse
     {
@@ -113,7 +113,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Remove company logo from R2 and tenant record.
+     * Remove company logo from tenant storage and tenant record.
      */
     public function destroyLogo(Request $request, TenantLogoService $logos): RedirectResponse|JsonResponse
     {

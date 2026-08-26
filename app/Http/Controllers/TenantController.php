@@ -112,7 +112,7 @@ class TenantController extends Controller
 
     public function edit(Tenant $tenant)
     {
-        $this->authorize('update', $tenant);
+        $this->authorize('view', $tenant);
 
         // Include tenant users and their roles for the Manage Users tab (id, name, email, roles)
         $tenant->load(['users.roles']);

@@ -39,7 +39,7 @@ class Tenant extends Model
     }
 
     /**
-     * Public URL for company logo via R2 Public Development URL (tenant or R2_PUBLIC_URL).
+     * Public URL for company logo via the tenant's active storage provider.
      */
     public function companyLogoUrl(): ?string
     {
@@ -48,7 +48,7 @@ class Tenant extends Model
         }
 
         $storage = StorageConfigService::forTenant((int) $this->id);
-        $publicUrl = $storage->r2PublicFileUrl($this->company_logo_path);
+        $publicUrl = $storage->publicFileUrl($this->company_logo_path);
         if ($publicUrl !== null) {
             return $publicUrl;
         }

@@ -20,6 +20,12 @@ class TenantSetting extends Model
 
     public const KEY_STORAGE_SUPABASE_KEY = 'storage_supabase_key';
 
+    public const KEY_STORAGE_SUPABASE_ACCESS_KEY = 'storage_supabase_access_key';
+
+    public const KEY_STORAGE_SUPABASE_SECRET_KEY = 'storage_supabase_secret_key';
+
+    public const KEY_STORAGE_SUPABASE_REGION = 'storage_supabase_region';
+
     public const KEY_STORAGE_SUPABASE_BUCKET = 'storage_supabase_bucket';
 
     public const KEY_STORAGE_GOOGLE_DRIVE_CLIENT_ID = 'storage_google_drive_client_id';
@@ -52,6 +58,7 @@ class TenantSetting extends Model
     public const ENCRYPTED_KEYS = [
         self::KEY_OPENAI_API_KEY,
         self::KEY_STORAGE_SUPABASE_KEY,
+        self::KEY_STORAGE_SUPABASE_SECRET_KEY,
         self::KEY_STORAGE_GOOGLE_DRIVE_CLIENT_SECRET,
         self::KEY_STORAGE_DROPBOX_APP_SECRET,
         self::KEY_STORAGE_DROPBOX_REFRESH_TOKEN,

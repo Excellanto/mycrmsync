@@ -192,6 +192,23 @@ function toggle(name, checked) {
 	const next = new Set(props.modelValue);
 	if (checked) {
 		next.add(name);
+		// Enabling a nav toggle also grants the capabilities the page policies require.
+		const navCapabilityGrants = {
+			'nav.user-management.tenants.show': ['tenants.view', 'tenants.update'],
+			'nav.settings.integrations.show': ['settings.view', 'settings.update', 'nav.settings.show'],
+			'nav.settings.data-configuration.show': ['settings.view', 'settings.update', 'nav.settings.show'],
+			'nav.settings.email-templates.show': ['settings.view', 'settings.update', 'nav.settings.show'],
+			'nav.settings.system-settings.show': ['settings.view', 'settings.update', 'nav.settings.show'],
+			'nav.settings.languages.show': ['languages.view', 'languages.update', 'nav.settings.show'],
+		};
+		for (const capability of navCapabilityGrants[name] || []) {
+			next.add(capability);
+		}
+		// Capability grants keep Tenants nav aligned the other direction.
+		if (name === 'tenants.view' || name === 'tenants.update') {
+			next.add('nav.user-management.tenants.show');
+			next.add('nav.user-management.show');
+		}
 	} else {
 		next.delete(name);
 		// Unchecking a module parent nav removes all child nav.* under that module (matches sidebar semantics).

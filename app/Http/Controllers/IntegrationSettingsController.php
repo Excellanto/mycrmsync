@@ -36,7 +36,7 @@ class IntegrationSettingsController extends Controller
 
     public function updateOpenAi(Request $request)
     {
-        $this->authorize('update', new TenantSetting());
+        $this->authorize('update', new TenantSetting);
 
         $user = $request->user();
         $tenantId = $this->resolveTenantId($user, $request, required: true);
@@ -75,7 +75,7 @@ class IntegrationSettingsController extends Controller
 
     public function updateStorage(Request $request, string $provider)
     {
-        $this->authorize('update', new TenantSetting());
+        $this->authorize('update', new TenantSetting);
 
         if (! in_array($provider, StorageConfigService::PROVIDERS, true)) {
             abort(404);
@@ -102,10 +102,45 @@ class IntegrationSettingsController extends Controller
 
     private function saveSupabaseStorage(Request $request, int $tenantId): void
     {
+        $existing = StorageConfigService::forTenant($tenantId);
+        $makeDefault = $request->boolean('is_default');
+
         $data = $request->validate([
-            'url' => ['nullable', 'string', 'max:500', 'url'],
-            'key' => ['nullable', 'string', 'max:1000'],
-            'bucket' => ['nullable', 'string', 'max:255'],
+            'url' => [
+                Rule::requiredIf($existing->supabaseUrl() === null && $makeDefault),
+                'nullable',
+                'string',
+                'max:500',
+                'url',
+            ],
+            'access_key' => [
+                Rule::requiredIf($existing->supabaseAccessKey() === null && $makeDefault),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'secret_key' => [
+                Rule::requiredIf($existing->supabaseSecretKey() === null && $makeDefault),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+            'region' => [
+                Rule::requiredIf(
+                    $makeDefault
+                    && ! TenantSetting::hasValue($tenantId, TenantSetting::KEY_STORAGE_SUPABASE_REGION)
+                    && StorageConfigService::systemSupabaseRegion() === null
+                ),
+                'nullable',
+                'string',
+                'max:64',
+            ],
+            'bucket' => [
+                Rule::requiredIf($existing->supabaseBucket() === null && $makeDefault),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'is_default' => ['boolean'],
             'tenant_id' => $this->tenantIdRules($request->user()),
         ]);
@@ -114,11 +149,19 @@ class IntegrationSettingsController extends Controller
             TenantSetting::setValue($tenantId, TenantSetting::KEY_STORAGE_SUPABASE_URL, trim($data['url']));
         }
 
+        if (trim((string) ($data['access_key'] ?? '')) !== '') {
+            TenantSetting::setValue($tenantId, TenantSetting::KEY_STORAGE_SUPABASE_ACCESS_KEY, trim($data['access_key']));
+        }
+
         $this->persistSecretIfProvided(
             $tenantId,
-            TenantSetting::KEY_STORAGE_SUPABASE_KEY,
-            $data['key'] ?? null
+            TenantSetting::KEY_STORAGE_SUPABASE_SECRET_KEY,
+            $data['secret_key'] ?? null
         );
+
+        if (trim((string) ($data['region'] ?? '')) !== '') {
+            TenantSetting::setValue($tenantId, TenantSetting::KEY_STORAGE_SUPABASE_REGION, trim($data['region']));
+        }
 
         if (trim((string) ($data['bucket'] ?? '')) !== '') {
             TenantSetting::setValue($tenantId, TenantSetting::KEY_STORAGE_SUPABASE_BUCKET, trim($data['bucket']));

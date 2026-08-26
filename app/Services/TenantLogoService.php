@@ -29,7 +29,7 @@ class TenantLogoService
         }
 
         $path = 'Tenant-Profile-Images/'.$tenant->id.'/'.Str::uuid()->toString().'.jpg';
-        $disk->put($path, $contents, ['visibility' => 'public']);
+        $disk->put($path, $contents);
 
         $tenant->update(['company_logo_path' => $path]);
 

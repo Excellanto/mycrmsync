@@ -314,7 +314,12 @@ class UserController extends Controller
             ], 404);
         }
 
-        $this->authorize('view', $tenant);
+        // Masters need tenants.view; tenant users only need users.view for their own company.
+        if ($actor->isMaster()) {
+            $this->authorize('view', $tenant);
+        } elseif ((int) $actor->tenant_id !== (int) $tenant->id) {
+            abort(403);
+        }
 
         $excludeUserMappedByUserId = null;
         if ($request->filled('for_user_id')) {

@@ -26,6 +26,10 @@ final class VoiceNoteStorageService
         $provider = $storage->voiceNoteStorageProvider();
 
         if ($provider === StorageConfigService::PROVIDER_SUPABASE) {
+            if ($storage->hasSupabaseS3Config()) {
+                return $this->uploadToSupabaseS3($storage, $tenantId, $userId, $audio);
+            }
+
             return $this->uploadToSupabase($storage, $userId, $audio);
         }
 
@@ -75,7 +79,40 @@ final class VoiceNoteStorageService
             );
         }
 
-        $recordingUrlLong = "{$baseUrl}/storage/v1/object/public/{$bucket}/{$storagePath}";
+        $recordingUrlLong = $storage->supabasePublicFileUrl($storagePath)
+            ?? "{$baseUrl}/storage/v1/object/public/{$bucket}/{$storagePath}";
+
+        return [
+            'storage_path' => $storagePath,
+            'file_name' => $fileName,
+            'recording_url_long' => $recordingUrlLong,
+        ];
+    }
+
+    /**
+     * @return array{storage_path: string, file_name: string, recording_url_long: string}
+     */
+    private function uploadToSupabaseS3(
+        StorageConfigService $storage,
+        int $tenantId,
+        string $userId,
+        UploadedFile $audio,
+    ): array {
+        $fileName = $this->buildFileName($audio);
+        $safeUserId = $this->sanitizePathSegment($userId);
+        $storagePath = "{$safeUserId}/{$fileName}";
+
+        $disk = TenantStorageDiskService::diskForTenant($tenantId, StorageConfigService::PROVIDER_SUPABASE);
+        $stored = $disk->put($storagePath, (string) file_get_contents($audio->getRealPath()));
+
+        if ($stored === false || ! $disk->exists($storagePath)) {
+            throw new RuntimeException('Failed to upload voice note to Supabase Storage.', 502);
+        }
+
+        $recordingUrlLong = $storage->supabasePublicFileUrl($storagePath) ?? $disk->url($storagePath);
+        if ($recordingUrlLong === null || $recordingUrlLong === '') {
+            throw new RuntimeException('Failed to resolve a public URL for the uploaded voice note.', 502);
+        }
 
         return [
             'storage_path' => $storagePath,
@@ -97,7 +134,7 @@ final class VoiceNoteStorageService
         $safeUserId = $this->sanitizePathSegment($userId);
         $storagePath = "voicenotes/{$safeUserId}/{$fileName}";
 
-        $disk = TenantStorageDiskService::diskForTenant($tenantId);
+        $disk = TenantStorageDiskService::diskForTenant($tenantId, StorageConfigService::PROVIDER_R2);
         $stored = $disk->put($storagePath, (string) file_get_contents($audio->getRealPath()));
 
         if ($stored === false || ! $disk->exists($storagePath)) {
@@ -156,9 +193,6 @@ final class VoiceNoteStorageService
         };
     }
 
-    /**
-     * @param  mixed  $json
-     */
     private function extractErrorMessage(mixed $json, string $fallback): string
     {
         if (is_array($json)) {

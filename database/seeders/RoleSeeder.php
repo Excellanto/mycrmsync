@@ -26,20 +26,22 @@ class RoleSeeder extends Seeder
         );
 
         $allPermissions = Permission::where('guard_name', $guard)->get();
-        // Platform tenant list (all companies / admin nav) — only Super Admin by default; others get it only via Roles matrix.
-        $excludedForTenantScoped = [
+        // Platform-wide tenant directory stays Super Admin only; Tenant Admin still gets
+        // company (own-tenant) management so Integration / Company screens work.
+        $excludedForTenantUser = [
             'nav.user-management.tenants.show',
             'tenants.view',
             'tenants.update',
         ];
-        $tenantScopedPermissions = $allPermissions->reject(
-            fn ($p) => in_array($p->name, $excludedForTenantScoped, true)
+        $tenantUserPermissions = $allPermissions->reject(
+            fn ($p) => in_array($p->name, $excludedForTenantUser, true)
         )->values();
 
         // Super Admin: always every permission in the system (platform-wide).
         $superAdmin->syncPermissions(Permission::where('guard_name', $guard)->get());
 
-        $tenantAdmin->syncPermissions($tenantScopedPermissions);
-        $tenantUser->syncPermissions($tenantScopedPermissions);
+        // Tenant Admin: all non-platform-directory permissions including own-company tenants.*.
+        $tenantAdmin->syncPermissions($allPermissions);
+        $tenantUser->syncPermissions($tenantUserPermissions);
     }
 }
