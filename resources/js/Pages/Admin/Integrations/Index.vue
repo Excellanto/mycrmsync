@@ -293,14 +293,32 @@
 									<p v-if="supabaseForm.errors.is_default" class="mt-2 text-sm text-red-600">{{ supabaseForm.errors.is_default }}</p>
 								</div>
 
-								<div class="flex justify-end border-t border-gray-100 pt-6">
-									<button
-										type="submit"
-										:disabled="supabaseForm.processing"
-										class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+								<div class="flex flex-col gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+									<p
+										v-if="supabaseVerifyMessage"
+										class="text-sm"
+										:class="supabaseVerifyOk ? 'text-emerald-700' : 'text-red-600'"
 									>
-										Save Supabase settings
-									</button>
+										{{ supabaseVerifyMessage }}
+									</p>
+									<span v-else class="hidden sm:block" />
+									<div class="flex justify-end gap-2">
+										<button
+											type="button"
+											:disabled="supabaseVerifying || supabaseForm.processing"
+											class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+											@click="verifySupabaseStorage"
+										>
+											{{ supabaseVerifying ? 'Verifying…' : 'Verify connection' }}
+										</button>
+										<button
+											type="submit"
+											:disabled="supabaseForm.processing || supabaseVerifying"
+											class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+										>
+											Save Supabase settings
+										</button>
+									</div>
 								</div>
 							</form>
 
@@ -530,6 +548,7 @@
 <script setup>
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { axios } from '@/bootstrap';
 
 const props = defineProps({
 	openai: {
@@ -630,6 +649,25 @@ const dropboxHasInput = computed(
 	() => Boolean(dropboxForm.app_key?.trim() || dropboxForm.app_secret?.trim())
 );
 const r2HasInput = computed(() => Boolean(r2Form.public_url?.trim()));
+
+const supabaseVerifying = ref(false);
+const supabaseVerifyOk = ref(false);
+const supabaseVerifyMessage = ref('');
+
+watch(
+	() => [
+		supabaseForm.url,
+		supabaseForm.access_key,
+		supabaseForm.secret_key,
+		supabaseForm.region,
+		supabaseForm.bucket,
+		supabaseForm.tenant_id,
+	],
+	() => {
+		supabaseVerifyMessage.value = '';
+		supabaseVerifyOk.value = false;
+	}
+);
 
 watch(
 	() => props.openai,
@@ -733,5 +771,42 @@ function submitStorage(provider) {
 			}
 		},
 	});
+}
+
+async function verifySupabaseStorage() {
+	supabaseVerifying.value = true;
+	supabaseVerifyMessage.value = '';
+	supabaseVerifyOk.value = false;
+
+	try {
+		const { data } = await axios.post(route('admin.integrations.storage.supabase.verify'), {
+			url: supabaseForm.url,
+			access_key: supabaseForm.access_key,
+			secret_key: supabaseForm.secret_key,
+			region: supabaseForm.region,
+			bucket: supabaseForm.bucket,
+			tenant_id: supabaseForm.tenant_id,
+		});
+
+		supabaseVerifyOk.value = Boolean(data?.ok);
+		supabaseVerifyMessage.value = data?.message || 'Supabase storage connection verified successfully.';
+	} catch (err) {
+		const responseData = err?.response?.data;
+		let message = 'Could not verify Supabase storage connection.';
+
+		if (responseData?.message && typeof responseData.message === 'string') {
+			message = responseData.message;
+		} else if (responseData?.errors && typeof responseData.errors === 'object') {
+			const first = Object.values(responseData.errors).flat()[0];
+			if (typeof first === 'string') {
+				message = first;
+			}
+		}
+
+		supabaseVerifyOk.value = false;
+		supabaseVerifyMessage.value = message;
+	} finally {
+		supabaseVerifying.value = false;
+	}
 }
 </script>

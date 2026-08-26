@@ -7,6 +7,8 @@ use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\Integrations\OpenAiConfigService;
 use App\Services\Integrations\StorageConfigService;
+use App\Services\Integrations\TenantStorageDiskService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -98,6 +100,66 @@ class IntegrationSettingsController extends Controller
         };
 
         return back()->with('success', $label.' storage settings saved.');
+    }
+
+    public function verifySupabase(Request $request): JsonResponse
+    {
+        $this->authorize('update', new TenantSetting);
+
+        $user = $request->user();
+        $tenantId = $this->resolveTenantId($user, $request, required: true);
+        $existing = StorageConfigService::forTenant($tenantId);
+
+        $data = $request->validate([
+            'url' => ['nullable', 'string', 'max:500', 'url'],
+            'access_key' => ['nullable', 'string', 'max:255'],
+            'secret_key' => ['nullable', 'string', 'max:1000'],
+            'region' => ['nullable', 'string', 'max:64'],
+            'bucket' => ['nullable', 'string', 'max:255'],
+            'tenant_id' => $this->tenantIdRules($user),
+        ]);
+
+        $url = $this->firstFilledString($data['url'] ?? null) ?? $existing->supabaseUrl();
+        $accessKey = $this->firstFilledString($data['access_key'] ?? null) ?? $existing->supabaseAccessKey();
+        $secretKey = $this->resolveSecretForVerify($data['secret_key'] ?? null, $existing->supabaseSecretKey());
+        $region = $this->firstFilledString($data['region'] ?? null) ?? $existing->supabaseRegion();
+        $bucket = $this->firstFilledString($data['bucket'] ?? null) ?? $existing->supabaseBucket();
+
+        $missing = array_filter([
+            'url' => $url === null ? 'Project URL is required to verify.' : null,
+            'access_key' => $accessKey === null ? 'Access Key ID is required to verify.' : null,
+            'secret_key' => $secretKey === null ? 'Secret Access Key is required to verify.' : null,
+            'bucket' => $bucket === null ? 'Bucket is required to verify.' : null,
+        ]);
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages($missing);
+        }
+
+        $projectUrl = rtrim((string) $url, '/');
+
+        try {
+            TenantStorageDiskService::verifyS3Disk([
+                'key' => (string) $accessKey,
+                'secret' => (string) $secretKey,
+                'region' => $region ?: 'us-east-1',
+                'bucket' => (string) $bucket,
+                'endpoint' => StorageConfigService::s3EndpointFromProjectUrl($projectUrl),
+                'url' => $projectUrl.'/storage/v1/object/public/'.$bucket,
+            ], pathStyle: true);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $this->friendlyStorageVerifyMessage($e),
+            ], 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Supabase storage connection verified successfully.',
+        ]);
     }
 
     private function saveSupabaseStorage(Request $request, int $tenantId): void
@@ -293,6 +355,43 @@ class IntegrationSettingsController extends Controller
         }
 
         TenantSetting::setValue($tenantId, $key, $secret, TenantSetting::TYPE_SECRET);
+    }
+
+    private function firstFilledString(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
+    }
+
+    private function resolveSecretForVerify(mixed $submitted, ?string $savedSecret): ?string
+    {
+        $fromForm = $this->firstFilledString($submitted);
+
+        if ($fromForm !== null && $fromForm !== self::MASKED_SECRET_PLACEHOLDER) {
+            return $fromForm;
+        }
+
+        return $savedSecret !== null && $savedSecret !== '' ? $savedSecret : null;
+    }
+
+    private function friendlyStorageVerifyMessage(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+
+        if ($message === '') {
+            return 'Could not connect to Supabase storage. Check the project URL, keys, region, and bucket.';
+        }
+
+        if (strlen($message) > 280) {
+            $message = substr($message, 0, 277).'...';
+        }
+
+        return 'Supabase storage verification failed: '.$message;
     }
 
     /**

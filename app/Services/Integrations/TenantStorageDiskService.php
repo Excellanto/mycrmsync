@@ -30,9 +30,39 @@ class TenantStorageDiskService
     }
 
     /**
+     * Write, read-check, and delete a tiny probe object to confirm S3-compatible credentials.
+     *
+     * @param  array<string, string|null>  $disk
+     *
+     * @throws \Throwable
+     */
+    public static function verifyS3Disk(array $disk, bool $pathStyle = true): void
+    {
+        $filesystem = self::buildS3Disk($disk, pathStyle: $pathStyle, throw: true);
+        $path = 'mysimconnect-verify/'.bin2hex(random_bytes(8)).'.txt';
+        $payload = 'mysimconnect-storage-verify-'.now()->toIso8601String();
+
+        try {
+            if (! $filesystem->put($path, $payload)) {
+                throw new \RuntimeException('Could not upload a test file to the storage bucket.');
+            }
+
+            if (! $filesystem->exists($path)) {
+                throw new \RuntimeException('Uploaded a test file but could not confirm it exists in the bucket.');
+            }
+        } finally {
+            try {
+                $filesystem->delete($path);
+            } catch (\Throwable) {
+                // Best-effort cleanup; verification already succeeded or failed above.
+            }
+        }
+    }
+
+    /**
      * @param  array<string, string|null>  $disk
      */
-    private static function buildS3Disk(array $disk, bool $pathStyle): Filesystem
+    public static function buildS3Disk(array $disk, bool $pathStyle, bool $throw = false): Filesystem
     {
         return Storage::build([
             'driver' => 's3',
@@ -44,7 +74,7 @@ class TenantStorageDiskService
             'url' => $disk['url'],
             'use_path_style_endpoint' => $pathStyle,
             'visibility' => 'private',
-            'throw' => false,
+            'throw' => $throw,
             'requestChecksumCalculation' => 'when_required',
             'responseChecksumValidation' => 'when_required',
         ]);

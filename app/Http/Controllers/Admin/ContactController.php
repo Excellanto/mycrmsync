@@ -9,8 +9,10 @@ use App\Models\Contact;
 use App\Models\ContactNote;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\VoiceNote;
 use App\Services\Contacts\ContactImportService;
 use App\Services\Contacts\ContactService;
+use App\Services\VoiceNote\VoiceNoteAttachmentSerializer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +26,7 @@ class ContactController extends Controller
     public function __construct(
         private ContactService $contacts,
         private ContactImportService $contactImport,
+        private VoiceNoteAttachmentSerializer $voiceNoteAttachments,
         private MyCrmSyncContactMapper $mapper = new MyCrmSyncContactMapper,
     ) {}
 
@@ -170,10 +173,19 @@ class ContactController extends Controller
         $this->authorize('view', $contact);
 
         $notes = $this->contacts->listNotes($contact);
+        $attachmentsByNoteId = $this->voiceNotesGroupedByCrmNoteId(
+            (int) $contact->tenant_id,
+            $notes->pluck('id')->map(fn ($id) => (string) $id)->all()
+        );
+        $orphanMedia = $this->orphanVoiceNotesForContact($contact);
 
         return response()->json([
             'contact' => $this->contactPayload($contact),
-            'notes' => $notes->map(fn (ContactNote $note) => $this->notePayload($note))->values(),
+            'notes' => $notes->map(fn (ContactNote $note) => $this->notePayload(
+                $note,
+                $attachmentsByNoteId->get((string) $note->id, collect())
+            ))->values(),
+            'media' => $this->voiceNoteAttachments->serializeMany($orphanMedia),
         ]);
     }
 
@@ -239,11 +251,13 @@ class ContactController extends Controller
     }
 
     /**
+     * @param  \Illuminate\Support\Collection<int, VoiceNote>|null  $attachments
      * @return array<string, mixed>
      */
-    private function notePayload(ContactNote $note): array
+    private function notePayload(ContactNote $note, $attachments = null): array
     {
         $note->loadMissing('user');
+        $attachmentRows = $attachments ?? collect();
 
         return [
             'id' => (string) $note->id,
@@ -254,7 +268,41 @@ class ContactController extends Controller
             'contact_id' => (string) $note->contact_id,
             'dateAdded' => $note->created_at?->toIso8601String() ?? '',
             'dateUpdated' => $note->updated_at?->toIso8601String() ?? '',
+            'attachments' => $this->voiceNoteAttachments->serializeMany($attachmentRows),
         ];
+    }
+
+    /**
+     * @param  list<string>  $noteIds
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, VoiceNote>>
+     */
+    private function voiceNotesGroupedByCrmNoteId(int $tenantId, array $noteIds)
+    {
+        if ($noteIds === []) {
+            return collect();
+        }
+
+        return VoiceNote::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('crm_note_id', $noteIds)
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy(fn (VoiceNote $row) => (string) $row->crm_note_id);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, VoiceNote>
+     */
+    private function orphanVoiceNotesForContact(Contact $contact)
+    {
+        return VoiceNote::query()
+            ->where('tenant_id', $contact->tenant_id)
+            ->where('contact_id', (string) $contact->id)
+            ->where(function ($q) {
+                $q->whereNull('crm_note_id')->orWhere('crm_note_id', '');
+            })
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     /**

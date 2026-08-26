@@ -105,6 +105,8 @@ Route::prefix('admin')
             ->name('data-configuration.integration-fields.update');
         Route::get('/integrations', [IntegrationSettingsController::class, 'index'])->name('integrations.index');
         Route::put('/integrations/openai', [IntegrationSettingsController::class, 'updateOpenAi'])->name('integrations.openai.update');
+        Route::post('/integrations/storage/supabase/verify', [IntegrationSettingsController::class, 'verifySupabase'])
+            ->name('integrations.storage.supabase.verify');
         Route::put('/integrations/storage/{provider}', [IntegrationSettingsController::class, 'updateStorage'])
             ->where('provider', 'supabase|google_drive|dropbox|r2')
             ->name('integrations.storage.update');

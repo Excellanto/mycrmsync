@@ -454,7 +454,7 @@
 			</div>
 		</PDialog>
 
-		<PDrawer v-model:visible="notesDrawerVisible" position="right" :style="{ width: '28rem' }" header="Contact Notes">
+		<PDrawer v-model:visible="notesDrawerVisible" position="right" :style="{ width: '32rem' }" header="Contact Notes">
 			<div v-if="activeContact" class="space-y-4">
 				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
 					<div class="font-medium">{{ activeContact.name || 'Contact' }}</div>
@@ -464,7 +464,42 @@
 				<div v-if="notesLoading" class="text-sm text-gray-500">Loading notes...</div>
 				<div v-else-if="notesError" class="text-sm text-red-600">{{ notesError }}</div>
 				<div v-else class="space-y-3">
-					<div v-if="notes.length === 0" class="text-sm text-gray-500">No notes yet.</div>
+					<div v-if="notes.length === 0 && contactMedia.length === 0" class="text-sm text-gray-500">No notes yet.</div>
+
+					<div
+						v-if="contactMedia.length"
+						class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-3"
+					>
+						<div class="text-xs font-semibold uppercase tracking-wide text-blue-900">Voice notes & media</div>
+						<div
+							v-for="att in contactMedia"
+							:key="att.id"
+							class="rounded-md border border-blue-100 bg-white p-3 space-y-2"
+						>
+							<div class="flex items-center justify-between gap-2 text-xs text-gray-500">
+								<span class="truncate font-medium text-gray-700">{{ att.file_name || att.filetype || 'Attachment' }}</span>
+								<span v-if="att.duration_sec != null">{{ formatDurationSec(att.duration_sec) }}</span>
+							</div>
+							<audio
+								v-if="att.is_audio && attachmentUrl(att)"
+								controls
+								class="w-full"
+								:src="attachmentUrl(att)"
+								preload="metadata"
+							/>
+							<a
+								v-else-if="attachmentUrl(att)"
+								:href="attachmentUrl(att)"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="text-sm font-medium text-primary-600 hover:text-primary-800"
+							>
+								Open {{ att.filetype || 'file' }}
+							</a>
+							<p v-if="att.summary" class="whitespace-pre-wrap text-sm text-gray-700">{{ att.summary }}</p>
+						</div>
+					</div>
+
 					<div
 						v-for="note in notes"
 						:key="note.id"
@@ -494,7 +529,34 @@
 								</button>
 							</div>
 						</div>
-						<div v-else class="whitespace-pre-wrap text-sm text-gray-800">{{ note.body }}</div>
+						<template v-else>
+							<div class="whitespace-pre-wrap text-sm text-gray-800">{{ note.body }}</div>
+							<div v-if="note.attachments?.length" class="mt-3 space-y-2 border-t border-gray-100 pt-3">
+								<div
+									v-for="att in note.attachments"
+									:key="att.id || attachmentUrl(att)"
+									class="space-y-1"
+								>
+									<div class="text-xs text-gray-500">{{ att.file_name || att.filetype || 'Attachment' }}</div>
+									<audio
+										v-if="att.is_audio && attachmentUrl(att)"
+										controls
+										class="w-full"
+										:src="attachmentUrl(att)"
+										preload="metadata"
+									/>
+									<a
+										v-else-if="attachmentUrl(att)"
+										:href="attachmentUrl(att)"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-sm font-medium text-primary-600 hover:text-primary-800"
+									>
+										Open {{ att.filetype || 'file' }}
+									</a>
+								</div>
+							</div>
+						</template>
 					</div>
 				</div>
 
@@ -726,6 +788,7 @@ function confirmDelete(contact) {
 const notesDrawerVisible = ref(false);
 const activeContact = ref(null);
 const notes = ref([]);
+const contactMedia = ref([]);
 const notesLoading = ref(false);
 const notesError = ref('');
 const newNoteBody = ref('');
@@ -737,6 +800,7 @@ async function openNotesDrawer(contact) {
 	activeContact.value = contact;
 	notesDrawerVisible.value = true;
 	notes.value = [];
+	contactMedia.value = [];
 	notesError.value = '';
 	newNoteBody.value = '';
 	editingNoteId.value = null;
@@ -756,6 +820,7 @@ async function loadNotes() {
 	try {
 		const { data } = await axios.get(route('admin.contacts.notes.index', activeContact.value.id));
 		notes.value = Array.isArray(data.notes) ? data.notes : [];
+		contactMedia.value = Array.isArray(data.media) ? data.media : [];
 		if (data.contact) {
 			activeContact.value = data.contact;
 		}
@@ -764,6 +829,17 @@ async function loadNotes() {
 	} finally {
 		notesLoading.value = false;
 	}
+}
+
+function attachmentUrl(att) {
+	return att?.fileslongurl || att?.fileshorturl || '';
+}
+
+function formatDurationSec(seconds) {
+	const total = Number(seconds) || 0;
+	const m = Math.floor(total / 60);
+	const s = total % 60;
+	return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
 async function addNote() {

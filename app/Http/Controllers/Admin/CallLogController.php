@@ -8,6 +8,7 @@ use App\Models\CallRecording;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CallRecording\CallRecordingProcessingService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -125,6 +126,8 @@ class CallLogController extends Controller
     {
         $this->authorize('view', $callLog);
 
+        $this->linkMatchingOrphanRecordings($callLog);
+
         $recordings = CallRecording::query()
             ->where('call_log_id', $callLog->id)
             ->orderByDesc('created_at')
@@ -146,10 +149,67 @@ class CallLogController extends Controller
     }
 
     /**
+     * Attach orphan call recordings (uploaded without call_log_id) that clearly belong to this call.
+     */
+    private function linkMatchingOrphanRecordings(CallLog $callLog): void
+    {
+        $window = $this->recordingMatchWindow($callLog);
+        if ($window === null) {
+            return;
+        }
+
+        [$from, $to] = $window;
+
+        $query = CallRecording::query()
+            ->whereNull('call_log_id')
+            ->where('user_id', (int) $callLog->user_id)
+            ->whereBetween('created_at', [$from, $to]);
+
+        $contactId = trim((string) ($callLog->contact_id ?? ''));
+        if ($contactId !== '') {
+            $query->where('contact_id', $contactId);
+        }
+
+        $orphans = $query->orderBy('created_at')->get();
+
+        // Without contact_id, only auto-link when exactly one orphan sits in the call window.
+        if ($contactId === '' && $orphans->count() !== 1) {
+            return;
+        }
+
+        foreach ($orphans as $orphan) {
+            $orphan->update(['call_log_id' => $callLog->id]);
+        }
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function recordingMatchWindow(CallLog $callLog): ?array
+    {
+        $started = $callLog->started_at;
+        if (! $started instanceof Carbon) {
+            return null;
+        }
+
+        $duration = max(0, (int) ($callLog->duration_sec ?? 0));
+        $from = $started->copy()->subMinutes(5);
+        $to = $started->copy()->addSeconds($duration)->addMinutes(30);
+
+        return [$from, $to];
+    }
+
+    /**
+     * Include soft-matched orphan recordings in the list count so Play can appear.
+     *
      * @return array<string, mixed>
      */
     private function callLogPayload(CallLog $log): array
     {
+        $linkedCount = (int) ($log->recordings_count ?? $log->recordings->count());
+        $orphanCount = $this->orphanRecordingCount($log);
+        $recordingsCount = $linkedCount + $orphanCount;
+
         $latest = $log->recordings->first();
 
         return [
@@ -166,10 +226,37 @@ class CallLogController extends Controller
             'ended_at' => $log->ended_at,
             'status' => $log->status,
             'created_at' => $log->created_at,
-            'recordings_count' => (int) ($log->recordings_count ?? $log->recordings->count()),
+            'recordings_count' => $recordingsCount,
             'user' => $log->user,
             'latest_recording' => $latest !== null ? $this->recordingSummary($latest) : null,
         ];
+    }
+
+    private function orphanRecordingCount(CallLog $log): int
+    {
+        $window = $this->recordingMatchWindow($log);
+        if ($window === null) {
+            return 0;
+        }
+
+        [$from, $to] = $window;
+
+        $query = CallRecording::query()
+            ->whereNull('call_log_id')
+            ->where('user_id', (int) $log->user_id)
+            ->whereBetween('created_at', [$from, $to]);
+
+        $contactId = trim((string) ($log->contact_id ?? ''));
+        if ($contactId !== '') {
+            $query->where('contact_id', $contactId);
+        } else {
+            // Mirror linkMatchingOrphanRecordings: only count when exactly one candidate.
+            $count = (clone $query)->count();
+
+            return $count === 1 ? 1 : 0;
+        }
+
+        return (int) $query->count();
     }
 
     /**
