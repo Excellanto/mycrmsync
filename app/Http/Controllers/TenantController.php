@@ -8,8 +8,10 @@ use App\Models\Integration;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\TenantLogoService;
 use App\Support\ApplicationCache;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -190,6 +192,28 @@ class TenantController extends Controller
 
         return redirect()->to($url)
             ->with('success', 'Tenant updated successfully.');
+    }
+
+    public function storeLogo(Request $request, Tenant $tenant, TenantLogoService $logos): RedirectResponse
+    {
+        $this->authorize('update', $tenant);
+
+        $request->validate([
+            'logo' => TenantLogoService::validationRule(),
+        ]);
+
+        $logos->store($tenant, $request->file('logo'));
+
+        return back()->with('success', 'Profile logo updated.');
+    }
+
+    public function destroyLogo(Request $request, Tenant $tenant, TenantLogoService $logos): RedirectResponse
+    {
+        $this->authorize('update', $tenant);
+
+        $logos->destroy($tenant);
+
+        return back()->with('success', 'Profile logo removed.');
     }
 
     public function updateStatus(Request $request, Tenant $tenant)

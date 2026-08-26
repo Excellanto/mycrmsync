@@ -191,6 +191,12 @@ Route::prefix('admin')
         Route::put('/tenants/{tenant}', [\App\Http\Controllers\TenantController::class, 'update'])
             ->middleware('permission:tenants.update')
             ->name('tenants.update');
+        Route::post('/tenants/{tenant}/logo', [\App\Http\Controllers\TenantController::class, 'storeLogo'])
+            ->middleware('permission:tenants.update')
+            ->name('tenants.logo.store');
+        Route::delete('/tenants/{tenant}/logo', [\App\Http\Controllers\TenantController::class, 'destroyLogo'])
+            ->middleware('permission:tenants.update')
+            ->name('tenants.logo.destroy');
         Route::patch('/tenants/{tenant}/status', [\App\Http\Controllers\TenantController::class, 'updateStatus'])
             ->middleware('permission:tenants.update')
             ->name('tenants.update-status');

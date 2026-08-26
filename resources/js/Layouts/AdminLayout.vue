@@ -8,19 +8,52 @@
 				class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-3"
 				:class="sidebarCollapsed ? 'flex-col gap-3' : ''"
 			>
-				<span
-					v-show="!sidebarCollapsed"
-					class="truncate text-lg font-semibold tracking-tight text-slate-800"
-				>
-					Admin
-				</span>
-				<span
-					v-show="sidebarCollapsed"
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white shadow-sm"
-					aria-hidden="true"
-				>
-					A
-				</span>
+				<div class="min-w-0" :class="sidebarCollapsed ? '' : 'flex-1'">
+					<template v-if="tenant">
+						<img
+							v-if="tenantLogoUrl && !sidebarCollapsed"
+							:src="tenantLogoUrl"
+							:alt="tenantCompanyName || 'Tenant logo'"
+							class="h-10 w-40 max-w-full object-contain object-left"
+						/>
+						<div
+							v-else-if="!sidebarCollapsed"
+							class="flex h-10 w-40 max-w-full items-center justify-center rounded-md bg-blue-600 text-base font-bold tracking-wide text-white shadow-sm"
+							:title="tenantCompanyName"
+						>
+							{{ tenantInitials }}
+						</div>
+						<img
+							v-else-if="tenantLogoUrl"
+							:src="tenantLogoUrl"
+							:alt="tenantCompanyName || 'Tenant logo'"
+							class="h-9 w-9 rounded-lg object-cover shadow-sm"
+						/>
+						<span
+							v-else
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white shadow-sm"
+							:title="tenantCompanyName"
+							aria-hidden="true"
+						>
+							{{ tenantInitials }}
+						</span>
+					</template>
+					<template v-else>
+						<span
+							v-show="!sidebarCollapsed"
+							class="truncate text-lg font-semibold tracking-tight text-slate-800"
+						>
+							Admin
+						</span>
+						<span
+							v-show="sidebarCollapsed"
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white shadow-sm"
+							aria-hidden="true"
+						>
+							A
+						</span>
+					</template>
+				</div>
 				<button
 					type="button"
 					class="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-200/90 hover:text-slate-800"
@@ -636,6 +669,20 @@ const configurationsOpen = ref(false);
 const settingsOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user || null);
+const tenant = computed(() => user.value?.tenant || null);
+const tenantLogoUrl = computed(() => tenant.value?.company_logo_url || null);
+const tenantCompanyName = computed(() => tenant.value?.company_name || '');
+const tenantInitials = computed(() => {
+	const name = tenantCompanyName.value;
+	if (!name.trim()) {
+		return 'TN';
+	}
+	const parts = name.trim().split(/\s+/).filter(Boolean);
+	if (parts.length >= 2) {
+		return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+	}
+	return name.trim().slice(0, 2).toUpperCase();
+});
 const permissionNames = computed(() => page.props.auth?.permissions || []);
 /**
  * Laravel Gate / policy results (same as route authorization). Prefer this over relying only on the

@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Integrations\TenantStorageDiskService;
+use App\Services\TenantLogoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -90,32 +89,19 @@ class ProfileController extends Controller
     }
 
     /**
-     * Upload company logo (250×100px) to R2 under Tenant-Profile-Images/.
+     * Upload company logo (400×100px, 4:1) to R2 under Tenant-Profile-Images/.
      */
-    public function storeLogo(Request $request): RedirectResponse|JsonResponse
+    public function storeLogo(Request $request, TenantLogoService $logos): RedirectResponse|JsonResponse
     {
         $user = $request->user();
         $tenant = $user->tenant;
         abort_if(! $tenant, 403);
 
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,jpg,png|max:5120|dimensions:width=250,height=100',
+            'logo' => TenantLogoService::validationRule(),
         ]);
 
-        $file = $request->file('logo');
-        $contents = file_get_contents($file->getRealPath());
-
-        $disk = TenantStorageDiskService::diskForTenant((int) $tenant->id);
-
-        if ($tenant->company_logo_path && $disk->exists($tenant->company_logo_path)) {
-            $disk->delete($tenant->company_logo_path);
-        }
-
-        $path = 'Tenant-Profile-Images/'.$tenant->id.'/'.Str::uuid()->toString().'.jpg';
-        $disk->put($path, $contents, ['visibility' => 'public']);
-
-        $tenant->update(['company_logo_path' => $path]);
-        $tenant->refresh();
+        $logos->store($tenant, $request->file('logo'));
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -129,19 +115,13 @@ class ProfileController extends Controller
     /**
      * Remove company logo from R2 and tenant record.
      */
-    public function destroyLogo(Request $request): RedirectResponse|JsonResponse
+    public function destroyLogo(Request $request, TenantLogoService $logos): RedirectResponse|JsonResponse
     {
         $user = $request->user();
         $tenant = $user->tenant;
         abort_if(! $tenant, 403);
 
-        $disk = TenantStorageDiskService::diskForTenant((int) $tenant->id);
-
-        if ($tenant->company_logo_path && $disk->exists($tenant->company_logo_path)) {
-            $disk->delete($tenant->company_logo_path);
-        }
-
-        $tenant->update(['company_logo_path' => null]);
+        $logos->destroy($tenant);
 
         if ($request->expectsJson()) {
             return response()->json(['company_logo_url' => null]);

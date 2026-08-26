@@ -19,11 +19,24 @@ class Tenant extends Model
 
     protected $fillable = ['company_name', 'account_type', 'email', 'pan_card', 'gst_number', 'status', 'company_logo_path', 'email_ingestion_enabled', 'integration', 'integration_status'];
 
+    protected $hidden = [
+        'company_logo_path',
+    ];
+
+    protected $appends = [
+        'company_logo_url',
+    ];
+
     protected $casts = [
         'email_ingestion_enabled' => 'boolean',
         'integration_status' => 'boolean',
         'integration' => 'array',
     ];
+
+    public function getCompanyLogoUrlAttribute(): ?string
+    {
+        return $this->companyLogoUrl();
+    }
 
     /**
      * Public URL for company logo via R2 Public Development URL (tenant or R2_PUBLIC_URL).

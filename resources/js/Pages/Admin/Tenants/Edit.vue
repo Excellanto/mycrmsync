@@ -7,6 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TenantLogoUploader from '@/Components/TenantLogoUploader.vue';
 
 const props = defineProps({
 	tenant: {
@@ -531,6 +532,13 @@ const deleteUser = (u) => {
 			<section v-show="activeTab === 'Profile'">
 				<div class="p-4">
 					<form @submit.prevent="submitProfile" class="space-y-4">
+						<TenantLogoUploader
+							:company-name="form.company_name"
+							:logo-url="props.tenant.company_logo_url"
+							:store-url="route('admin.tenants.logo.store', props.tenant.id)"
+							:destroy-url="route('admin.tenants.logo.destroy', props.tenant.id)"
+						/>
+
 						<div>
 							<InputLabel for="company_name" value="Company Name" />
 							<TextInput
