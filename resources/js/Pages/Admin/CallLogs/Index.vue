@@ -164,17 +164,25 @@
 								Play
 								<span v-if="data.recordings_count > 1" class="text-xs text-gray-500">({{ data.recordings_count }})</span>
 							</button>
-							<Badge v-if="recordingAiBadge(data.latest_recording)" :severity="recordingAiBadge(data.latest_recording).severity">
-								{{ recordingAiBadge(data.latest_recording).label }}
+							<Badge v-if="recordingAiBadge(data.latest_recording) || data.note" :severity="recordingAiBadge(data.latest_recording)?.severity || 'info'">
+								{{ recordingAiBadge(data.latest_recording)?.label || 'Note' }}
 							</Badge>
 						</div>
 						<span v-else class="text-sm text-gray-400">—</span>
 					</template>
 				</PColumn>
 
-				<PColumn header="Status" style="width: 120px">
+				<PColumn header="Note" style="min-width: 220px">
 					<template #body="{ data }">
-						<span class="text-sm text-gray-700">{{ data.status }}</span>
+						<button
+							v-if="data.note"
+							type="button"
+							class="line-clamp-3 max-w-xs text-left text-sm font-medium text-primary-600 hover:text-primary-800 hover:underline"
+							@click="openNoteModal(data)"
+						>
+							{{ notePreview(data.note) }}
+						</button>
+						<span v-else class="text-sm text-gray-400">—</span>
 					</template>
 				</PColumn>
 
@@ -199,6 +207,37 @@
 			<Pagination :links="logs.links" />
 		</div>
 
+		<PDialog
+			v-model:visible="noteModalVisible"
+			modal
+			header="Call note"
+			:style="{ width: '32rem' }"
+			:breakpoints="{ '960px': '90vw' }"
+		>
+			<div v-if="noteModalCallLog" class="space-y-4">
+				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+					<div class="font-medium text-gray-900">
+						{{ noteModalCallLog.contact_name || noteModalCallLog.phone_e164 || noteModalCallLog.phone_raw || 'Call' }}
+					</div>
+					<div class="mt-1 text-gray-600">
+						{{ formatStartedAt(noteModalCallLog.started_at || noteModalCallLog.created_at) }}
+						<span v-if="noteModalCallLog.direction"> · {{ noteModalCallLog.direction }}</span>
+						<span v-if="noteModalCallLog.duration_sec != null"> · {{ formatDuration(noteModalCallLog.duration_sec) }}</span>
+					</div>
+				</div>
+				<p class="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{{ noteModalCallLog.note }}</p>
+			</div>
+			<template #footer>
+				<button
+					type="button"
+					class="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300"
+					@click="noteModalVisible = false"
+				>
+					Close
+				</button>
+			</template>
+		</PDialog>
+
 		<PDrawer v-model:visible="recordingDrawerVisible" position="right" :style="{ width: '32rem' }" header="Call Recording">
 			<div v-if="activeCallLog" class="space-y-5">
 				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
@@ -208,17 +247,23 @@
 
 				<div v-if="recordingsLoading" class="text-sm text-gray-500">Loading recordings...</div>
 				<div v-else-if="recordingsError" class="text-sm text-red-600">{{ recordingsError }}</div>
-				<div v-else-if="recordings.length === 0" class="text-sm text-gray-500">No recordings linked to this call.</div>
+				<div v-else-if="recordings.length === 0" class="text-sm text-gray-500">
+					No recordings or timeline notes linked to this call yet. Upload audio via call-recordings/transcribe
+					(with call_log_id) or voice-notes/process for this contact.
+				</div>
 
-				<div v-for="recording in recordings" :key="recording.call_recording_id" class="space-y-4 rounded-lg border border-gray-200 p-4">
+				<div v-for="recording in recordings" :key="recording.id || recording.call_recording_id" class="space-y-4 rounded-lg border border-gray-200 p-4">
 					<div class="flex flex-wrap items-center justify-between gap-2">
-						<span class="text-xs text-gray-500">{{ formatRecordingDate(recording.created_at) }}</span>
+						<span class="text-xs text-gray-500">
+							{{ formatRecordingDate(recording.created_at) }}
+							<span v-if="recording.type" class="ml-1 text-gray-400">· {{ recording.type === 'voice_note' ? 'Voice note' : 'Call recording' }}</span>
+						</span>
 						<Badge :severity="recordingStatusSeverity(recording.status)">{{ recordingStatusLabel(recording) }}</Badge>
 					</div>
 
 					<audio
 						v-if="playbackUrl(recording)"
-						:key="recording.call_recording_id"
+						:key="(recording.id || recording.call_recording_id) + '-audio'"
 						controls
 						class="w-full"
 						:src="playbackUrl(recording)"
@@ -226,15 +271,15 @@
 					>
 						Your browser does not support audio playback.
 					</audio>
-					<p v-else class="text-sm text-gray-500">No playable audio URL for this recording.</p>
+					<p v-else class="text-sm text-gray-500">No playable audio URL for this item.</p>
 
 					<div v-if="recording.transcription_backend" class="text-xs text-gray-500">
 						Engine: {{ recording.transcription_backend }}
 					</div>
 
-					<div v-if="recording.summary" class="space-y-1">
-						<h3 class="text-sm font-semibold text-gray-900">Summary</h3>
-						<p class="whitespace-pre-wrap text-sm text-gray-700">{{ recording.summary }}</p>
+					<div v-if="recording.note || recording.summary" class="space-y-1">
+						<h3 class="text-sm font-semibold text-gray-900">Note</h3>
+						<p class="whitespace-pre-wrap text-sm text-gray-700">{{ recording.note || recording.summary }}</p>
 					</div>
 
 					<div v-if="recording.sentiment?.overall" class="space-y-1">
@@ -256,10 +301,10 @@
 					</div>
 
 					<div
-						v-if="!recording.summary && !recording.transcription && recording.status === 'completed'"
+						v-if="!recording.note && !recording.summary && !recording.transcription && recording.status === 'completed'"
 						class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
 					>
-						Recording saved but no AI transcription or summary is available.
+						Recording saved but no AI note or transcription is available.
 					</div>
 				</div>
 			</div>
@@ -306,6 +351,20 @@ const activeCallLog = ref(null);
 const recordings = ref([]);
 const recordingsLoading = ref(false);
 const recordingsError = ref('');
+
+const noteModalVisible = ref(false);
+const noteModalCallLog = ref(null);
+
+function openNoteModal(callLog) {
+	noteModalCallLog.value = callLog;
+	noteModalVisible.value = true;
+}
+
+function notePreview(note) {
+	const text = String(note || '').replace(/\s+/g, ' ').trim();
+	if (text.length <= 80) return text;
+	return `${text.slice(0, 80)}…`;
+}
 
 function syncTenantSelectionFromFilters() {
 	if (!props.tenants?.length || !filters.tenant_id) {
@@ -394,7 +453,11 @@ async function openRecordingDrawer(callLog) {
 	try {
 		const { data } = await axios.get(route('admin.call-logs.recordings', callLog.id));
 		activeCallLog.value = data.call_log || callLog;
-		recordings.value = Array.isArray(data.recordings) ? data.recordings : [];
+		recordings.value = Array.isArray(data.media)
+			? data.media
+			: Array.isArray(data.recordings)
+				? data.recordings
+				: [];
 	} catch (err) {
 		recordingsError.value = err?.response?.data?.message || err.message || 'Could not load recordings.';
 	} finally {
@@ -418,8 +481,8 @@ function recordingAiBadge(latest) {
 }
 
 function recordingStatusLabel(recording) {
-	if (recording.status === 'completed' && (recording.summary || recording.transcription)) {
-		return 'AI processed';
+	if (recording.note || recording.summary || recording.transcription) {
+		return 'Note ready';
 	}
 	if (recording.status === 'completed') {
 		return 'Completed';

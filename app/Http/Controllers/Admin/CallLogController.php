@@ -7,8 +7,7 @@ use App\Models\CallLog;
 use App\Models\CallRecording;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\CallRecording\CallRecordingProcessingService;
-use Carbon\Carbon;
+use App\Services\CallLog\CallLogRelatedMediaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +18,7 @@ use Inertia\Response;
 class CallLogController extends Controller
 {
     public function __construct(
-        private CallRecordingProcessingService $recordingFormatter,
+        private CallLogRelatedMediaService $relatedMedia,
     ) {}
 
     public function index(Request $request): Response
@@ -78,10 +77,21 @@ class CallLogController extends Controller
         }
 
         if ($request->boolean('has_recording')) {
-            $query->whereHas('recordings');
+            $query->where(function ($q) {
+                $q->whereHas('recordings')
+                    ->orWhereExists(function ($sub) {
+                        $sub->selectRaw('1')
+                            ->from('voice_notes')
+                            ->whereColumn('voice_notes.contact_id', 'call_logs.contact_id')
+                            ->whereRaw('voice_notes.user_id::text = call_logs.user_id')
+                            ->whereNotNull('call_logs.contact_id')
+                            ->where('call_logs.contact_id', '!=', '');
+                    });
+            });
         }
 
         $logs = $query->paginate(20)->withQueryString();
+        $mediaByLogId = $this->relatedMedia->summarizeForLogs($logs->getCollection());
 
         $usersQuery = User::query()
             ->select('id', 'name', 'email', 'tenant_id')
@@ -94,7 +104,10 @@ class CallLogController extends Controller
         }
 
         return Inertia::render('Admin/CallLogs/Index', [
-            'logs' => $logs->through(fn (CallLog $log) => $this->callLogPayload($log)),
+            'logs' => $logs->through(fn (CallLog $log) => $this->callLogPayload(
+                $log,
+                $mediaByLogId[(string) $log->id] ?? null
+            )),
             'filters' => $request->only(['tenant_id', 'user_id', 'phone', 'contact', 'direction', 'start_date', 'end_date', 'has_recording']),
             'tenants' => $isMaster
                 ? Tenant::query()->select('id', 'company_name')->orderBy('company_name')->get()
@@ -126,13 +139,7 @@ class CallLogController extends Controller
     {
         $this->authorize('view', $callLog);
 
-        $this->linkMatchingOrphanRecordings($callLog);
-
-        $recordings = CallRecording::query()
-            ->where('call_log_id', $callLog->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (CallRecording $recording) => $this->recordingFormatter->formatResult($recording));
+        $media = $this->relatedMedia->mediaForLog($callLog);
 
         return response()->json([
             'call_log' => [
@@ -144,73 +151,30 @@ class CallLogController extends Controller
                 'direction' => $callLog->direction,
                 'duration_sec' => $callLog->duration_sec,
             ],
-            'recordings' => $recordings->values(),
+            'recordings' => $media,
+            'media' => $media,
         ]);
     }
 
     /**
-     * Attach orphan call recordings (uploaded without call_log_id) that clearly belong to this call.
-     */
-    private function linkMatchingOrphanRecordings(CallLog $callLog): void
-    {
-        $window = $this->recordingMatchWindow($callLog);
-        if ($window === null) {
-            return;
-        }
-
-        [$from, $to] = $window;
-
-        $query = CallRecording::query()
-            ->whereNull('call_log_id')
-            ->where('user_id', (int) $callLog->user_id)
-            ->whereBetween('created_at', [$from, $to]);
-
-        $contactId = trim((string) ($callLog->contact_id ?? ''));
-        if ($contactId !== '') {
-            $query->where('contact_id', $contactId);
-        }
-
-        $orphans = $query->orderBy('created_at')->get();
-
-        // Without contact_id, only auto-link when exactly one orphan sits in the call window.
-        if ($contactId === '' && $orphans->count() !== 1) {
-            return;
-        }
-
-        foreach ($orphans as $orphan) {
-            $orphan->update(['call_log_id' => $callLog->id]);
-        }
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon}|null
-     */
-    private function recordingMatchWindow(CallLog $callLog): ?array
-    {
-        $started = $callLog->started_at;
-        if (! $started instanceof Carbon) {
-            return null;
-        }
-
-        $duration = max(0, (int) ($callLog->duration_sec ?? 0));
-        $from = $started->copy()->subMinutes(5);
-        $to = $started->copy()->addSeconds($duration)->addMinutes(30);
-
-        return [$from, $to];
-    }
-
-    /**
-     * Include soft-matched orphan recordings in the list count so Play can appear.
-     *
+     * @param  array{playback_count: int, note: string|null, latest_recording: array<string, mixed>|null}|null  $media
      * @return array<string, mixed>
      */
-    private function callLogPayload(CallLog $log): array
+    private function callLogPayload(CallLog $log, ?array $media): array
     {
-        $linkedCount = (int) ($log->recordings_count ?? $log->recordings->count());
-        $orphanCount = $this->orphanRecordingCount($log);
-        $recordingsCount = $linkedCount + $orphanCount;
-
-        $latest = $log->recordings->first();
+        $playbackCount = (int) ($media['playback_count'] ?? $log->recordings_count ?? $log->recordings->count());
+        $latest = $media['latest_recording'] ?? null;
+        if ($latest === null && $log->recordings->first()) {
+            $recording = $log->recordings->first();
+            $latest = [
+                'id' => $recording->id,
+                'status' => $recording->status,
+                'has_transcription' => trim((string) ($recording->transcription ?? '')) !== '',
+                'has_summary' => trim((string) ($recording->summary ?? '')) !== '',
+                'transcription_backend' => $recording->transcription_backend,
+                'created_at' => $recording->created_at?->toIso8601String(),
+            ];
+        }
 
         return [
             'id' => $log->id,
@@ -225,52 +189,11 @@ class CallLogController extends Controller
             'started_at' => $log->started_at,
             'ended_at' => $log->ended_at,
             'status' => $log->status,
+            'note' => $media['note'] ?? null,
             'created_at' => $log->created_at,
-            'recordings_count' => $recordingsCount,
+            'recordings_count' => $playbackCount,
             'user' => $log->user,
-            'latest_recording' => $latest !== null ? $this->recordingSummary($latest) : null,
-        ];
-    }
-
-    private function orphanRecordingCount(CallLog $log): int
-    {
-        $window = $this->recordingMatchWindow($log);
-        if ($window === null) {
-            return 0;
-        }
-
-        [$from, $to] = $window;
-
-        $query = CallRecording::query()
-            ->whereNull('call_log_id')
-            ->where('user_id', (int) $log->user_id)
-            ->whereBetween('created_at', [$from, $to]);
-
-        $contactId = trim((string) ($log->contact_id ?? ''));
-        if ($contactId !== '') {
-            $query->where('contact_id', $contactId);
-        } else {
-            // Mirror linkMatchingOrphanRecordings: only count when exactly one candidate.
-            $count = (clone $query)->count();
-
-            return $count === 1 ? 1 : 0;
-        }
-
-        return (int) $query->count();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function recordingSummary(CallRecording $recording): array
-    {
-        return [
-            'id' => $recording->id,
-            'status' => $recording->status,
-            'has_transcription' => trim((string) ($recording->transcription ?? '')) !== '',
-            'has_summary' => trim((string) ($recording->summary ?? '')) !== '',
-            'transcription_backend' => $recording->transcription_backend,
-            'created_at' => $recording->created_at?->toIso8601String(),
+            'latest_recording' => $latest,
         ];
     }
 }
