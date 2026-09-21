@@ -24,8 +24,9 @@ final class ContactService
         int $perPage = 20,
     ): LengthAwarePaginator {
         $query = $this->filteredQuery($tenantId, $filters)
-            ->with(['assignedUser:id,name,email'])
-            ->orderByDesc('created_at');
+            ->with(['assignedUser:id,name,email']);
+
+        $this->applySort($query, $filters);
 
         return $query->paginate($perPage)->withQueryString();
     }
@@ -42,11 +43,11 @@ final class ContactService
             'search' => $query,
             'assigned_to' => $params['assigned_to'] ?? null,
             'tag' => $params['tag'] ?? null,
-        ])->with(['assignedUser:id,name,email'])
-            ->orderByDesc('created_at')
-            ->limit($limit);
+        ])->with(['assignedUser:id,name,email']);
 
-        return $builder->get();
+        $this->applySort($builder, $params);
+
+        return $builder->limit($limit)->get();
     }
 
     public function countForTenant(int $tenantId, array $filters = []): int
@@ -292,6 +293,50 @@ final class ContactService
         }
 
         return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function applySort(Builder $query, array $params): void
+    {
+        $sortBy = strtolower(trim((string) ($params['sort_by'] ?? $params['sortBy'] ?? 'date_added')));
+        if (! in_array($sortBy, ['name', 'date_added', 'activity'], true)) {
+            $sortBy = 'date_added';
+        }
+
+        $sortDir = strtolower(trim((string) ($params['sort_dir'] ?? $params['sortDir'] ?? '')));
+        if (! in_array($sortDir, ['asc', 'desc'], true)) {
+            $sortDir = $sortBy === 'name' ? 'asc' : 'desc';
+        }
+
+        $table = $query->getModel()->getTable();
+        $dirSql = $sortDir === 'asc' ? 'asc' : 'desc';
+
+        match ($sortBy) {
+            'name' => $query
+                ->orderByRaw(
+                    "lower(trim(concat(coalesce({$table}.first_name, ''), ' ', coalesce({$table}.last_name, '')))) {$dirSql}"
+                )
+                ->orderBy("{$table}.id"),
+            'activity' => $query
+                ->orderByRaw(
+                    '(select max(activity_at) from (
+                        select cn.created_at as activity_at
+                        from contact_notes cn
+                        where cn.contact_id = '.$table.'.id
+                        union all
+                        select vn.created_at as activity_at
+                        from voice_notes vn
+                        where vn.contact_id = '.$table.'.id::text
+                    ) activities) '.$dirSql.' nulls last'
+                )
+                ->orderByDesc("{$table}.created_at")
+                ->orderBy("{$table}.id"),
+            default => $query
+                ->orderBy("{$table}.created_at", $sortDir)
+                ->orderBy("{$table}.id"),
+        };
     }
 
     /**

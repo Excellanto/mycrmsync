@@ -44,6 +44,8 @@ final class GhlCompatController extends Controller
      *
      * @queryParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
      * @queryParam limit int Optional. Page size 1–100.
+     * @queryParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: activity
+     * @queryParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc` (defaults: `asc` for name, `desc` otherwise). Example: desc
      * @queryParam fields string Optional. **Zoho only:** comma-separated Zoho Contacts API field names (max 50). Defaults to fields required for MysimConnect’s normalized contact shape. Example: First_Name,Last_Name,Email
      *
      * @response 200 {"contacts":[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","calls":{"total_dialed":4,"total_talk_time":620,"total_received":3,"total_notes":2}}],"meta":{"total":1}}
@@ -54,6 +56,10 @@ final class GhlCompatController extends Controller
 
         $request->validate([
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'sort_by' => ['nullable', 'string', 'in:name,date_added,activity'],
+            'sort_dir' => ['nullable', 'string', 'in:asc,desc'],
+            'sortBy' => ['nullable', 'string', 'in:name,date_added,activity'],
+            'sortDir' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
@@ -66,13 +72,13 @@ final class GhlCompatController extends Controller
         if ($this->isZohoTenant($tenant)) {
             return $this->proxyContacts(fn () => $this->zoho->listContacts(
                 $tenant,
-                $this->queryWithoutLocalContext($request, $tenant)
+                $this->queryWithoutLocalContext($request, $tenant, except: ['sort_by', 'sort_dir', 'sortBy', 'sortDir'])
             ), $tenant, $user);
         }
 
         return $this->proxyContacts(fn () => $this->ghl->listContacts(
             $tenant,
-            $this->queryWithoutLocalContext($request, $tenant, defaultLocationId: true)
+            $this->queryWithoutLocalContext($request, $tenant, defaultLocationId: true, except: ['sort_by', 'sort_dir', 'sortBy', 'sortDir'])
         ), $tenant, $user);
     }
 
@@ -82,6 +88,8 @@ final class GhlCompatController extends Controller
      * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
      * @bodyParam query string Optional. Example: jane@example.com
      * @bodyParam pageLimit int Optional. Example: 20
+     * @bodyParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: name
+     * @bodyParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc`. Example: asc
      * @bodyParam fields string Optional. **Zoho only:** comma-separated Contacts field API names forwarded to `/Contacts/search`. Example: First_Name,Last_Name,Email
      *
      * @response 200 {"contacts":[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Doe","phone":"+919910023290","calls":{"total_dialed":4,"total_talk_time":620,"total_received":3,"total_notes":2}}],"total":1}
@@ -93,6 +101,10 @@ final class GhlCompatController extends Controller
         $request->validate([
             'query' => ['nullable', 'string'],
             'pageLimit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'sort_by' => ['nullable', 'string', 'in:name,date_added,activity'],
+            'sort_dir' => ['nullable', 'string', 'in:asc,desc'],
+            'sortBy' => ['nullable', 'string', 'in:name,date_added,activity'],
+            'sortDir' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
@@ -105,13 +117,13 @@ final class GhlCompatController extends Controller
         if ($this->isZohoTenant($tenant)) {
             return $this->proxyContacts(fn () => $this->zoho->searchContacts(
                 $tenant,
-                $this->bodyWithoutLocalContext($request, $tenant)
+                $this->bodyWithoutLocalContext($request, $tenant, except: ['sort_by', 'sort_dir', 'sortBy', 'sortDir'])
             ), $tenant, $user);
         }
 
         return $this->proxyContacts(fn () => $this->ghl->searchContacts(
             $tenant,
-            $this->bodyWithoutLocalContext($request, $tenant, defaultLocationId: true)
+            $this->bodyWithoutLocalContext($request, $tenant, defaultLocationId: true, except: ['sort_by', 'sort_dir', 'sortBy', 'sortDir'])
         ), $tenant, $user);
     }
 
