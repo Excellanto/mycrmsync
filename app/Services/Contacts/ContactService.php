@@ -11,6 +11,7 @@ use App\Support\PhoneNormalizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class ContactService
@@ -50,6 +51,78 @@ final class ContactService
         return $builder->limit($limit)->get();
     }
 
+    /**
+     * Best display-name matches for a free-text name. MyCrmSync contacts only.
+     *
+     * @return array{matches: list<array{contact: Contact, score: int}>, confident: bool}
+     */
+    public function matchByName(Tenant $tenant, string $query, int $limit = 5): array
+    {
+        $limit = min(max($limit, 1), 20);
+        $normalized = ContactNameScorer::normalize($query);
+        $recallTokens = ContactNameScorer::tokens($normalized);
+
+        if ($recallTokens === []) {
+            return ['matches' => [], 'confident' => false];
+        }
+
+        $nameSql = ContactNameScorer::NORMALIZED_NAME_SQL;
+        $builder = Contact::query()
+            ->forTenantId($tenant->id)
+            ->with(['assignedUser:id,name,email'])
+            ->where(function (Builder $matches) use ($recallTokens, $normalized, $nameSql) {
+                foreach ($recallTokens as $token) {
+                    $pattern = '%'.addcslashes($token, '\\%_').'%';
+                    $matches->orWhereRaw($nameSql.' ILIKE ? ESCAPE ?', [$pattern, '\\']);
+                }
+
+                if (DB::getDriverName() === 'pgsql') {
+                    $matches->orWhereRaw('word_similarity(?, '.$nameSql.') > 0.3', [$normalized]);
+                }
+            });
+
+        if (DB::getDriverName() === 'pgsql') {
+            $builder->orderByRaw('word_similarity(?, '.$nameSql.') DESC', [$normalized]);
+        }
+
+        $contacts = $builder
+            ->orderBy('id')
+            ->limit(300)
+            ->get();
+
+        $candidates = [];
+
+        foreach ($contacts as $contact) {
+            $candidates[] = [
+                'id' => (string) $contact->id,
+                'first_name' => (string) $contact->first_name,
+                'last_name' => (string) $contact->last_name,
+            ];
+        }
+
+        $ranked = (new ContactNameScorer)->rank($query, $candidates, $limit);
+        $byId = $contacts->keyBy(fn (Contact $contact) => (string) $contact->id);
+        $matches = [];
+
+        foreach ($ranked['matches'] as $row) {
+            $contact = $byId->get($row['id']);
+
+            if ($contact === null) {
+                continue;
+            }
+
+            $matches[] = [
+                'contact' => $contact,
+                'score' => $row['score'],
+            ];
+        }
+
+        return [
+            'matches' => $matches,
+            'confident' => $ranked['confident'],
+        ];
+    }
+
     public function countForTenant(int $tenantId, array $filters = []): int
     {
         return $this->filteredQuery($tenantId, $filters)->count();
@@ -77,13 +150,21 @@ final class ContactService
 
         $candidates = Contact::query()
             ->forTenantId($tenantId)
-            ->where('phone', '!=', '')
-            ->where('phone', 'ilike', '%'.$suffix.'%')
+            ->where(function ($query) use ($suffix) {
+                $query->where(function ($q) use ($suffix) {
+                    $q->where('phone', '!=', '')
+                        ->where('phone', 'ilike', '%'.$suffix.'%');
+                })->orWhere(function ($q) use ($suffix) {
+                    $q->where('phone_2', '!=', '')
+                        ->where('phone_2', 'ilike', '%'.$suffix.'%');
+                });
+            })
             ->orderByDesc('updated_at')
             ->get();
 
         foreach ($candidates as $contact) {
-            if (PhoneNormalizer::digitsMatch((string) $contact->phone, $phone)) {
+            if (PhoneNormalizer::digitsMatch((string) $contact->phone, $phone)
+                || PhoneNormalizer::digitsMatch((string) $contact->phone_2, $phone)) {
                 return $contact;
             }
         }
@@ -278,6 +359,7 @@ final class ContactService
                     ->orWhere('last_name', 'ilike', $like)
                     ->orWhere('email', 'ilike', $like)
                     ->orWhere('phone', 'ilike', $like)
+                    ->orWhere('phone_2', 'ilike', $like)
                     ->orWhere('company_name', 'ilike', $like);
             });
         }
@@ -360,6 +442,7 @@ final class ContactService
             'last_name' => trim((string) ($data['last_name'] ?? $data['lastName'] ?? '')),
             'email' => trim((string) ($data['email'] ?? '')),
             'phone' => trim((string) ($data['phone'] ?? '')),
+            'phone_2' => trim((string) ($data['phone_2'] ?? $data['phone2'] ?? '')),
             'company_name' => trim((string) ($data['company_name'] ?? $data['companyName'] ?? '')),
             'business_info' => trim((string) ($data['business_info'] ?? $data['businessInfo'] ?? '')),
             'source' => trim((string) ($data['source'] ?? '')),

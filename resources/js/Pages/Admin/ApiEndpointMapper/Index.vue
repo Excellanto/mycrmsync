@@ -699,6 +699,27 @@ const crmCatalog = computed(() => {
 				sampleResponse: { contacts: [NORMALIZED_CONTACT_SAMPLE], meta: {} },
 			},
 			{
+				key: 'zoho.matchContacts',
+				name: 'Best-match contact by name',
+				method: 'POST',
+				url: '/api/crm/contacts/match',
+				description:
+					'MyCrmSync only. Zoho tenants receive 422 because Zoho keeps the contact list, so this app cannot rank every name.',
+				auth: 'Bearer (API JWT)',
+				docsUrl: 'https://www.zoho.com/crm/developer/docs/api/v8/search-records.html',
+				schema: [
+					{ key: 'body.user_id', type: 'number', required: true },
+					{ key: 'body.query', type: 'string', required: true },
+					{ key: 'body.limit', type: 'number', required: false },
+				],
+				samplePayload: { user_id: 1, query: 'Jane Marie Doe', limit: 5 },
+				sampleResponse: {
+					success: false,
+					message:
+						'Best-match contact search is available for MyCrmSync only. Zoho keeps contacts in Zoho CRM, so this app cannot rank the full contact list.',
+				},
+			},
+			{
 				key: 'zoho.createLead',
 				name: 'Create Lead',
 				method: 'POST',

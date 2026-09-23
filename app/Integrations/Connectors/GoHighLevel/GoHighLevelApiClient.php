@@ -646,7 +646,7 @@ final class GoHighLevelApiClient
 
         return array_values(array_filter(
             array_map(
-                fn (string $url): string => rtrim($url, ".,;:)]}"),
+                fn (string $url): string => rtrim($url, '.,;:)]}'),
                 $matches[0] ?? []
             ),
             fn (string $url): bool => filter_var($url, FILTER_VALIDATE_URL) !== false
@@ -729,6 +729,11 @@ final class GoHighLevelApiClient
             'source' => trim((string) ($body['source'] ?? '')),
             'timezone' => trim((string) ($body['timezone'] ?? '')),
         ], fn ($value): bool => $value !== '' && $value !== null);
+
+        $phone2 = trim((string) ($body['phone2'] ?? $body['phone_2'] ?? ''));
+        if ($phone2 !== '') {
+            $payload['additionalPhones'] = [$phone2];
+        }
 
         $assignedTo = trim((string) ($body['assignedTo'] ?? $body['assigned_to'] ?? ''));
         if ($assignedTo !== '') {

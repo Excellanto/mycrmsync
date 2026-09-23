@@ -18,6 +18,7 @@ class Contact extends Model
         'last_name',
         'email',
         'phone',
+        'phone_2',
         'company_name',
         'business_info',
         'source',

@@ -28,6 +28,7 @@ final class MyCrmSyncContactMapper
             businessInfo: trim((string) $contact->business_info),
             email: trim((string) $contact->email),
             phone: trim((string) $contact->phone),
+            phone2: trim((string) $contact->phone_2),
             source: trim((string) $contact->source),
             type: trim((string) $contact->type),
             assignedTo: $contact->assigned_to !== null ? (string) $contact->assigned_to : '',

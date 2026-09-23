@@ -23,7 +23,7 @@ final class MyCrmSyncCrmApiClient
     public function listContacts(Tenant $tenant, array $query = []): array
     {
         $limit = min(max((int) ($query['limit'] ?? 20), 1), 100);
-        $collection = $this->contacts->searchForTenant($tenant, ['limit' => $limit]);
+        $collection = $this->contacts->searchForTenant($tenant, array_merge($query, ['limit' => $limit]));
         $total = $this->contacts->countForTenant($tenant->id);
 
         return [$this->mapper->contactsEnvelope($collection, $total, $limit), 200];
@@ -46,6 +46,35 @@ final class MyCrmSyncCrmApiClient
         $limit = min(max((int) ($body['pageLimit'] ?? $body['limit'] ?? 20), 1), 100);
 
         return [$this->mapper->contactsEnvelope($collection, $total, $limit), 200];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{0: array<string, mixed>, 1: int}
+     */
+    public function matchContacts(Tenant $tenant, array $body = []): array
+    {
+        $query = trim((string) ($body['query'] ?? ''));
+        $limit = min(max((int) ($body['limit'] ?? 5), 1), 20);
+        $ranked = $this->contacts->matchByName($tenant, $query, $limit);
+        $rows = [];
+
+        foreach ($ranked['matches'] as $match) {
+            $rows[] = [
+                'contact' => $this->mapper->mapContact($match['contact'])->toArray(),
+                'score' => $match['score'],
+            ];
+        }
+
+        $best = $rows[0] ?? null;
+
+        return [[
+            'success' => true,
+            'contact' => $best['contact'] ?? null,
+            'score' => $best['score'] ?? 0,
+            'confident' => $ranked['confident'] && $best !== null,
+            'alternatives' => array_slice($rows, 1),
+        ], 200];
     }
 
     /**

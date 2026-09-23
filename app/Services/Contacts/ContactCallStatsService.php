@@ -111,6 +111,12 @@ final class ContactCallStatsService
             if ($suffix !== '' && ! isset($phoneSuffixToContactId[$suffix])) {
                 $phoneSuffixToContactId[$suffix] = $contactId;
             }
+
+            $suffix2 = $this->phoneSuffix(trim((string) ($contact['phone2'] ?? $contact['phone_2'] ?? '')));
+
+            if ($suffix2 !== '' && ! isset($phoneSuffixToContactId[$suffix2])) {
+                $phoneSuffixToContactId[$suffix2] = $contactId;
+            }
         }
 
         if ($contactIds === []) {

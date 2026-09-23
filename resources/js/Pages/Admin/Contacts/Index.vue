@@ -144,6 +144,12 @@
 					</template>
 				</PColumn>
 
+				<PColumn header="Phone 2" style="width: 140px">
+					<template #body="{ data }">
+						<span class="text-sm">{{ data.phone2 || '—' }}</span>
+					</template>
+				</PColumn>
+
 				<PColumn header="City" style="width: 140px">
 					<template #body="{ data }">
 						<span class="text-sm">{{ data.city || '—' }}</span>
@@ -249,9 +255,15 @@
 					<label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
 					<PInputText v-model="contactForm.email" type="email" class="w-full" />
 				</div>
-				<div>
-					<label class="mb-1 block text-sm font-medium text-gray-700">Phone</label>
-					<PInputText v-model="contactForm.phone" class="w-full" />
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+						<PInputText v-model="contactForm.phone" class="w-full" />
+					</div>
+					<div>
+						<label class="mb-1 block text-sm font-medium text-gray-700">Phone 2</label>
+						<PInputText v-model="contactForm.phone_2" class="w-full" />
+					</div>
 				</div>
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Company</label>
@@ -363,6 +375,7 @@
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Name</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Email</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Phone</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Phone 2</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Company</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Tags</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
@@ -386,6 +399,7 @@
 									<td class="px-3 py-2 align-top">{{ row.name || '—' }}</td>
 									<td class="px-3 py-2 align-top">{{ row.email || '—' }}</td>
 									<td class="px-3 py-2 align-top">{{ row.phone || '—' }}</td>
+									<td class="px-3 py-2 align-top">{{ row.phone_2 || '—' }}</td>
 									<td class="px-3 py-2 align-top">{{ row.company_name || '—' }}</td>
 									<td class="px-3 py-2 align-top">
 										<div class="flex flex-wrap gap-1">
@@ -458,7 +472,7 @@
 			<div v-if="activeContact" class="space-y-4">
 				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
 					<div class="font-medium">{{ activeContact.name || 'Contact' }}</div>
-					<div class="text-sm text-gray-600">{{ activeContact.email || activeContact.phone || '—' }}</div>
+					<div class="text-sm text-gray-600">{{ activeContact.email || activeContact.phone || activeContact.phone2 || '—' }}</div>
 				</div>
 
 				<div v-if="notesLoading" class="text-sm text-gray-500">Loading notes...</div>
@@ -680,6 +694,7 @@ const contactForm = useForm({
 	last_name: '',
 	email: '',
 	phone: '',
+	phone_2: '',
 	company_name: '',
 	address: '',
 	city: '',
@@ -695,6 +710,7 @@ function emptyContactForm() {
 	contactForm.last_name = '';
 	contactForm.email = '';
 	contactForm.phone = '';
+	contactForm.phone_2 = '';
 	contactForm.company_name = '';
 	contactForm.address = '';
 	contactForm.city = '';
@@ -719,6 +735,7 @@ function openEditModal(contact) {
 	contactForm.last_name = contact.lastName || '';
 	contactForm.email = contact.email || '';
 	contactForm.phone = contact.phone || '';
+	contactForm.phone_2 = contact.phone2 || contact.phone_2 || '';
 	contactForm.company_name = contact.companyName || '';
 	contactForm.address = contact.address || '';
 	contactForm.city = contact.city || '';
@@ -741,6 +758,7 @@ function contactPayloadFromForm() {
 		last_name: contactForm.last_name,
 		email: contactForm.email,
 		phone: contactForm.phone,
+		phone_2: contactForm.phone_2,
 		company_name: contactForm.company_name,
 		address: contactForm.address,
 		city: contactForm.city,
@@ -1020,6 +1038,7 @@ async function submitImport() {
 			last_name: row.last_name || '',
 			email: row.email || '',
 			phone: row.phone || '',
+			phone_2: row.phone_2 || '',
 			company_name: row.company_name || '',
 			source: row.source || '',
 			city: row.city || '',

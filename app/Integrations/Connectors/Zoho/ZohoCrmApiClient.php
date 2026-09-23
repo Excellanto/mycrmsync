@@ -718,7 +718,7 @@ final class ZohoCrmApiClient
 
         return array_values(array_filter(
             array_map(
-                fn (string $url): string => rtrim($url, ".,;:)]}"),
+                fn (string $url): string => rtrim($url, '.,;:)]}'),
                 $matches[0] ?? []
             ),
             fn (string $url): bool => filter_var($url, FILTER_VALIDATE_URL) !== false
@@ -841,6 +841,7 @@ final class ZohoCrmApiClient
             'Last_Name' => $lastName,
             'Email' => trim((string) ($body['email'] ?? '')),
             'Phone' => trim((string) ($body['phone'] ?? '')),
+            'Mobile' => trim((string) ($body['phone2'] ?? $body['phone_2'] ?? '')),
             'Account_Name' => trim((string) ($body['companyName'] ?? $body['company_name'] ?? '')),
             'Mailing_Street' => trim((string) ($body['address'] ?? '')),
             'Mailing_City' => trim((string) ($body['city'] ?? '')),

@@ -18,7 +18,8 @@ final class ContactImportService
         'last_name' => ['last_name', 'lastname', 'last name', 'last', 'surname'],
         'name' => ['name', 'full name', 'fullname', 'contact name', 'contact'],
         'email' => ['email', 'e-mail', 'email address', 'mail'],
-        'phone' => ['phone', 'mobile', 'telephone', 'phone number', 'cell', 'tel'],
+        'phone' => ['phone', 'telephone', 'phone number', 'cell', 'tel', 'mobile'],
+        'phone_2' => ['phone_2', 'phone2', 'phone 2', 'mobile 2', 'mobile2', 'secondary phone', 'alternate phone', 'alt phone'],
         'company_name' => ['company', 'company_name', 'company name', 'organization', 'organisation', 'business'],
         'tags' => ['tags', 'tag', 'labels', 'label'],
         'source' => ['source', 'lead source'],
@@ -143,6 +144,7 @@ final class ContactImportService
         $warnings = [];
         $email = trim((string) ($data['email'] ?? ''));
         $phone = trim((string) ($data['phone'] ?? ''));
+        $phone2 = trim((string) ($data['phone_2'] ?? ''));
         $firstName = trim((string) ($data['first_name'] ?? ''));
         $lastName = trim((string) ($data['last_name'] ?? ''));
 
@@ -150,14 +152,14 @@ final class ContactImportService
             $warnings[] = 'Invalid email format.';
         }
 
-        if ($email === '' && $phone === '' && $firstName === '' && $lastName === '') {
+        if ($email === '' && $phone === '' && $phone2 === '' && $firstName === '' && $lastName === '') {
             $warnings[] = 'Missing name, email, and phone.';
         }
 
         $displayName = trim($firstName.' '.$lastName);
 
         if ($displayName === '') {
-            $displayName = $email !== '' ? $email : ($phone !== '' ? $phone : 'Row '.($offset + 2));
+            $displayName = $email !== '' ? $email : ($phone !== '' ? $phone : ($phone2 !== '' ? $phone2 : 'Row '.($offset + 2)));
         }
 
         return [
@@ -166,6 +168,7 @@ final class ContactImportService
             'last_name' => $lastName,
             'email' => $email,
             'phone' => $phone,
+            'phone_2' => $phone2,
             'company_name' => trim((string) ($data['company_name'] ?? '')),
             'source' => trim((string) ($data['source'] ?? '')),
             'city' => trim((string) ($data['city'] ?? '')),

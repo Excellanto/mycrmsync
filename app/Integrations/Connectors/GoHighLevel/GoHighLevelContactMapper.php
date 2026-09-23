@@ -51,6 +51,7 @@ final class GoHighLevelContactMapper
             businessInfo: '',
             email: trim((string) data_get($row, 'email', '')),
             phone: trim((string) (data_get($row, 'phone') ?: data_get($row, 'phoneNumber') ?: '')),
+            phone2: $this->secondaryPhone($row),
             source: trim((string) (data_get($row, 'source') ?: data_get($row, 'contactSource') ?: '')),
             type: trim((string) data_get($row, 'type', '')),
             assignedTo: trim((string) (data_get($row, 'assignedTo') ?: data_get($row, 'assignedToUserId') ?: '')),
@@ -67,6 +68,36 @@ final class GoHighLevelContactMapper
             timezone: trim((string) data_get($row, 'timezone', '')),
             profilePhoto: trim((string) (data_get($row, 'profilePhoto') ?: data_get($row, 'photo') ?: '')),
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function secondaryPhone(array $row): string
+    {
+        $direct = trim((string) (data_get($row, 'phone2') ?: data_get($row, 'phone_2') ?: data_get($row, 'additionalPhone') ?: ''));
+
+        if ($direct !== '') {
+            return $direct;
+        }
+
+        $additional = data_get($row, 'additionalPhones');
+
+        if (! is_array($additional) || $additional === []) {
+            return '';
+        }
+
+        $first = $additional[0] ?? null;
+
+        if (is_string($first)) {
+            return trim($first);
+        }
+
+        if (is_array($first)) {
+            return trim((string) (data_get($first, 'phone') ?: data_get($first, 'phoneNumber') ?: data_get($first, 'number') ?: ''));
+        }
+
+        return '';
     }
 
     /**

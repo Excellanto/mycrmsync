@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\Integrations\GoHighLevel;
 
 use App\Http\Controllers\Controller;
-use App\Integrations\CrmApiClientResolver;
 use App\Integrations\Connectors\GoHighLevel\GoHighLevelApiClient;
 use App\Integrations\Connectors\MyCrmSync\MyCrmSyncCrmApiClient;
 use App\Integrations\Connectors\Zoho\ZohoCrmApiClient;
+use App\Integrations\CrmApiClientResolver;
 use App\Integrations\FetchTenantIntegrationCrmUsers;
 use App\Models\Tenant;
 use App\Models\User;
@@ -128,6 +128,53 @@ final class GhlCompatController extends Controller
     }
 
     /**
+     * Best-match contact by name
+     *
+     * Ranks MyCrmSync contacts by how closely the display name matches a two- or three-word query.
+     * Word order does not matter. Zoho and GoHighLevel return 422 because their contacts are not stored in full here.
+     *
+     * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
+     * @bodyParam query string required Name text, one to three words. Example: Jane Marie Doe
+     * @bodyParam limit int Optional. How many ranked contacts to return, 1–20. The first is `contact`; the rest are `alternatives`. Example: 5
+     *
+     * `score` is a match percentage from 0 to 100. 100 means the name matches the query exactly.
+     *
+     * @response 200 {"success":true,"contact":{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Jane Marie Doe"},"score":100,"confident":true,"alternatives":[]}
+     * @response 422 {"success":false,"message":"Best-match contact search is available for MyCrmSync only. Zoho keeps contacts in Zoho CRM, so this app cannot rank the full contact list."}
+     */
+    public function matchContacts(Request $request): JsonResponse
+    {
+        ['user' => $user, 'tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
+
+        $request->validate([
+            'query' => ['required', 'string', 'max:200'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+        ]);
+
+        if (! CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            $message = match (true) {
+                $this->isZohoTenant($tenant) => 'Best-match contact search is available for MyCrmSync only. Zoho keeps contacts in Zoho CRM, so this app cannot rank the full contact list.',
+                CrmApiClientResolver::isGoHighLevelTenant($tenant) => 'Best-match contact search is available for MyCrmSync only. GoHighLevel keeps contacts in GoHighLevel, so this app cannot rank the full contact list.',
+                default => 'Best-match contact search is available for MyCrmSync only.',
+            };
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+            ], 422);
+        }
+
+        return $this->proxyArray(function () use ($request, $tenant, $user) {
+            [$json, $status] = $this->myCrmSync->matchContacts(
+                $tenant,
+                $this->bodyWithoutLocalContext($request, $tenant)
+            );
+
+            return [$this->enrichNameMatch($tenant, $user, $json), $status];
+        });
+    }
+
+    /**
      * List users
      *
      * @queryParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
@@ -237,6 +284,7 @@ final class GhlCompatController extends Controller
      * @bodyParam lastName string optional Contact last name. Also accepts `last_name`. Example: Doe
      * @bodyParam email string optional Contact email. At least one of email or phone is required. Example: jane@example.com
      * @bodyParam phone string optional Contact phone. At least one of email or phone is required. Example: +919910023290
+     * @bodyParam phone2 string optional Secondary contact phone. Example: +919910023291
      * @bodyParam companyName string optional Company name. Also accepts `company_name`. Example: Acme Corp
      * @bodyParam address string optional Street address. Example: 123 Main St
      * @bodyParam city string optional City. Example: Mumbai
@@ -289,6 +337,7 @@ final class GhlCompatController extends Controller
      * @bodyParam lastName string optional Contact last name. Also accepts `last_name`. Example: Doe
      * @bodyParam email string optional Contact email. Example: jane@example.com
      * @bodyParam phone string optional Contact phone. Example: +919910023290
+     * @bodyParam phone2 string optional Secondary contact phone. Example: +919910023291
      * @bodyParam companyName string optional Company name. Also accepts `company_name`. Example: Acme Corp
      * @bodyParam address string optional Street address. Example: 123 Main St
      * @bodyParam city string optional City. Example: Mumbai
@@ -494,7 +543,6 @@ final class GhlCompatController extends Controller
      *
      * @bodyParam noteid string required CRM note id. Example: f47ac10b-58cc-4372-a567-0e02b2c3d479
      * @bodyParam contactId string required CRM contact id from list/search (GoHighLevel or Zoho). Example: 550e8400-e29b-41d4-a716-446655440000
-     *
      * @bodyParam user_id int required Local MysimConnect user id returned by OTP verification. Example: 1
      * @bodyParam body string required Note text. Example: Updated text.
      * @bodyParam urls string[] required Attachment URLs. Example: ["https://your-s3-bucket.com/uploads/audio_brief.mp3"]
@@ -627,6 +675,8 @@ final class GhlCompatController extends Controller
             'last_name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:64'],
+            'phone2' => ['nullable', 'string', 'max:64'],
+            'phone_2' => ['nullable', 'string', 'max:64'],
             'companyName' => ['nullable', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -948,6 +998,39 @@ final class GhlCompatController extends Controller
         [$json, $status] = $result;
 
         return [$this->contactNoteListEnricher->enrich($tenant, $json), $status];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function enrichNameMatch(Tenant $tenant, User $user, array $payload): array
+    {
+        if (is_array($payload['contact'] ?? null)) {
+            $payload['contact']['calls'] = $this->contactCallStats->statsForContact($tenant, $user, $payload['contact']);
+        }
+
+        $alternatives = $payload['alternatives'] ?? [];
+
+        if (! is_array($alternatives)) {
+            return $payload;
+        }
+
+        foreach ($alternatives as $index => $alternative) {
+            if (! is_array($alternative) || ! is_array($alternative['contact'] ?? null)) {
+                continue;
+            }
+
+            $alternatives[$index]['contact']['calls'] = $this->contactCallStats->statsForContact(
+                $tenant,
+                $user,
+                $alternative['contact']
+            );
+        }
+
+        $payload['alternatives'] = $alternatives;
+
+        return $payload;
     }
 
     /**

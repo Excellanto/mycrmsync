@@ -144,8 +144,13 @@ final class ContactDetailService
             }
 
             $contactPhone = trim((string) ($contact['phone'] ?? ''));
+            $contactPhone2 = trim((string) ($contact['phone2'] ?? $contact['phone_2'] ?? ''));
 
             if ($contactPhone !== '' && PhoneNormalizer::digitsMatch($contactPhone, $phone)) {
+                return $contact;
+            }
+
+            if ($contactPhone2 !== '' && PhoneNormalizer::digitsMatch($contactPhone2, $phone)) {
                 return $contact;
             }
         }

@@ -32,6 +32,37 @@ const GHL_SAMPLE_NOTE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
 /** @type {Record<string, CrmMappedEndpoint[]>} */
 export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
+	mycrmsync: [
+		{
+			key: 'mycrmsync.contacts.match',
+			name: 'Best-match contact by name',
+			crmMethod: 'POST',
+			crmPath: '/api/crm/contacts/match',
+			systemMethod: 'POST',
+			systemPath: '/api/crm/contacts/match',
+			routeName: 'api.crm.contacts.match',
+			headersNote:
+				'Application API: Bearer (API JWT). Content-Type: application/json. Ranks first name + last name. Word order does not matter.',
+			request: {
+				query: null,
+				path: null,
+				body: { user_id: 1, query: 'Jane Marie Doe', limit: 5 },
+			},
+			responseStatus: 200,
+			responseBody: {
+				success: true,
+				contact: {
+					id: GHL_SAMPLE_CONTACT_ID,
+					name: 'Jane Marie Doe',
+					firstName: 'Jane Marie',
+					lastName: 'Doe',
+				},
+				score: 100,
+				confident: true,
+				alternatives: [],
+			},
+		},
+	],
 	gohighlevel: [
 		{
 			key: 'ghl.contacts.index',
@@ -76,6 +107,29 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 			responseBody: { success: true, contacts: [], total: 0 },
 		},
 		{
+			key: 'ghl.contacts.match',
+			name: 'Best-match contact by name',
+			crmMethod: 'POST',
+			crmPath: '/api/crm/contacts/match',
+			crmBaseUrl: GHL_BASE,
+			systemMethod: 'POST',
+			systemPath: '/api/crm/contacts/match',
+			routeName: 'api.crm.contacts.match',
+			headersNote:
+				'Application API only. MyCrmSync ranks local contact names. GoHighLevel tenants receive 422 because contacts stay in GoHighLevel.',
+			request: {
+				query: null,
+				path: null,
+				body: { user_id: 1, query: 'Jane Marie Doe', limit: 5 },
+			},
+			responseStatus: 422,
+			responseBody: {
+				success: false,
+				message:
+					'Best-match contact search is available for MyCrmSync only. GoHighLevel keeps contacts in GoHighLevel, so this app cannot rank the full contact list.',
+			},
+		},
+		{
 			key: 'ghl.contacts.store',
 			name: 'Create contact',
 			crmMethod: 'POST',
@@ -95,6 +149,7 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 					lastName: 'Doe',
 					email: 'jane@example.com',
 					phone: '+919910023290',
+					phone2: '+919910023291',
 					companyName: 'Acme Corp',
 					address: '123 Main St',
 					city: 'Mumbai',
@@ -113,6 +168,7 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 					name: 'Jane Doe',
 					email: 'jane@example.com',
 					phone: '+919910023290',
+					phone2: '+919910023291',
 					city: 'Mumbai',
 					postalCode: '400001',
 				},
@@ -139,6 +195,7 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 					lastName: 'Doe',
 					email: 'jane@example.com',
 					phone: '+919910023290',
+					phone2: '+919910023291',
 					city: 'Mumbai',
 					postalCode: '400001',
 				},
@@ -152,6 +209,7 @@ export const CRM_SYSTEM_API_MAPPINGS_BY_SLUG = {
 					name: 'Jane Doe',
 					email: 'jane@example.com',
 					phone: '+919910023290',
+					phone2: '+919910023291',
 					city: 'Mumbai',
 					postalCode: '400001',
 				},

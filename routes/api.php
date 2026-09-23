@@ -6,8 +6,8 @@ use App\Http\Controllers\Api\Crm\CallLogController;
 use App\Http\Controllers\Api\Crm\CallRecordingController;
 use App\Http\Controllers\Api\Crm\ContactController;
 use App\Http\Controllers\Api\Crm\ContactFileController;
-use App\Http\Controllers\Api\Crm\ContactNoteSummaryController;
 use App\Http\Controllers\Api\Crm\ContactMediaBatchController;
+use App\Http\Controllers\Api\Crm\ContactNoteSummaryController;
 use App\Http\Controllers\Api\Crm\VoiceNoteController;
 use App\Http\Controllers\Api\Integrations\GoHighLevel\GhlCompatController;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +58,7 @@ Route::prefix('crm')
         Route::get('/contacts', [GhlCompatController::class, 'listContacts'])->name('api.crm.contacts.index');
         Route::get('/contact', [ContactController::class, 'show'])->name('api.crm.contact.show');
         Route::post('/contacts/search', [GhlCompatController::class, 'searchContacts'])->name('api.crm.contacts.search');
+        Route::post('/contacts/match', [GhlCompatController::class, 'matchContacts'])->name('api.crm.contacts.match');
         Route::post('/contacts/add', [GhlCompatController::class, 'createContact'])->name('api.crm.contacts.store');
         Route::post('/contacts/update', [GhlCompatController::class, 'updateContact'])->name('api.crm.contacts.update');
         Route::post('/contacts/delete', [GhlCompatController::class, 'deleteContact'])->name('api.crm.contacts.destroy');
