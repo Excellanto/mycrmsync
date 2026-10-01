@@ -204,7 +204,7 @@ Route::prefix('admin')
             ->middleware('permission:tasks.update')
             ->name('tasks.status');
         Route::delete('/tasks/{task}', [\App\Http\Controllers\Admin\TaskController::class, 'destroy'])
-            ->middleware('permission:tasks.view')
+            ->middleware('permission:tasks.delete')
             ->name('tasks.destroy');
 
         // Tenants (tenants.view / tenants.update permissions; see TenantPolicy)

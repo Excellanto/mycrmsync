@@ -96,6 +96,7 @@ const expanded = ref({});
 const moduleNavPermissionMap = {
 	'Api Management': 'nav.api-management.show',
 	CRM: 'nav.crm.show',
+	'My tasks': 'nav.crm.tasks.show',
 	'Contact Management': 'nav.contact-management.show',
 	'Url Management': 'nav.url-management.show',
 	'User Management': 'nav.user-management.show',
@@ -123,6 +124,7 @@ const permissionLabels = {
 	'tasks.view': 'View tasks',
 	'tasks.create': 'Create tasks',
 	'tasks.update': 'Edit tasks',
+	'tasks.delete': 'Delete tasks',
 	'contacts.view': 'View contacts',
 	'contacts.create': 'Create contacts',
 	'contacts.update': 'Edit contacts',
@@ -147,8 +149,7 @@ const subModuleNavPermissionMap = {
 		'Mapped APIs': 'nav.api-management.mapped-apis.show'
 	},
 	CRM: {
-		'Call Logs': 'nav.crm.call-logs.show',
-		Tasks: 'nav.crm.tasks.show'
+		'Call Logs': 'nav.crm.call-logs.show'
 	},
 	'Contact Management': {
 		Contacts: 'nav.contact-management.contacts.show'
@@ -226,7 +227,7 @@ function toggle(name, checked) {
 		for (const [parent, prefix] of cascade) {
 			if (name === parent) {
 				for (const n of [...next]) {
-					if (n.startsWith(prefix) && n !== parent) {
+					if (n.startsWith(prefix) && n !== parent && n !== 'nav.crm.tasks.show') {
 						next.delete(n);
 					}
 				}

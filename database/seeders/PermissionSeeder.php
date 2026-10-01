@@ -51,6 +51,7 @@ class PermissionSeeder extends Seeder
             'tasks.view',
             'tasks.create',
             'tasks.update',
+            'tasks.delete',
             // Contacts (MyCrmSync)
             'contacts.view',
             'contacts.create',

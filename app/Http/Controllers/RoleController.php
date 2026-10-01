@@ -69,7 +69,6 @@ class RoleController extends Controller
         // CRM / call logs
         $crmSubs = [
             'Call Logs' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'call-logs.') || $p->name === 'nav.crm.call-logs.show')->sortBy('name')->values(),
-            'Tasks' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'tasks.') || $p->name === 'nav.crm.tasks.show')->sortBy('name')->values(),
         ];
         $crmSubs = array_filter($crmSubs, fn ($arr) => $arr->isNotEmpty());
         foreach ($crmSubs as $subs) {
@@ -77,6 +76,12 @@ class RoleController extends Controller
         }
         if (! empty($crmSubs)) {
             $result['CRM'] = $crmSubs;
+        }
+
+        $myTaskPerms = $permissions->filter(fn ($p) => str_starts_with($p->name, 'tasks.'))->sortBy('name')->values();
+        if ($myTaskPerms->isNotEmpty()) {
+            $result['My tasks'] = $myTaskPerms->all();
+            $markPlaced($myTaskPerms);
         }
 
         // Contact Management (MyCrmSync)
@@ -148,6 +153,7 @@ class RoleController extends Controller
         $moduleParentNav = $permissions->filter(fn ($p) => in_array($p->name, [
             'nav.api-management.show',
             'nav.crm.show',
+            'nav.crm.tasks.show',
             'nav.url-management.show',
             'nav.user-management.show',
             'nav.settings.show',

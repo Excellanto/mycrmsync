@@ -272,7 +272,7 @@ final class CrmTaskService
             return true;
         }
 
-        if ((int) $task->tenant_id !== (int) $user->tenant_id) {
+        if ((int) $task->tenant_id !== (int) $user->tenant_id || ! $user->can('tasks.delete')) {
             return false;
         }
 
