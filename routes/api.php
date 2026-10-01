@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\Crm\ContactController;
 use App\Http\Controllers\Api\Crm\ContactFileController;
 use App\Http\Controllers\Api\Crm\ContactMediaBatchController;
 use App\Http\Controllers\Api\Crm\ContactNoteSummaryController;
+use App\Http\Controllers\Api\Crm\ContactReminderController;
+use App\Http\Controllers\Api\Crm\TaskController as CrmTaskController;
 use App\Http\Controllers\Api\Crm\VoiceNoteController;
 use App\Http\Controllers\Api\Integrations\GoHighLevel\GhlCompatController;
 use Illuminate\Support\Facades\Route;
@@ -66,6 +68,19 @@ Route::prefix('crm')
         Route::get('/tags', [GhlCompatController::class, 'listLocationTags'])->name('api.crm.tags.index');
 
         Route::post('/contacts/add/tags', [GhlCompatController::class, 'addContactTags'])->name('api.crm.contacts.tags.store');
+
+        Route::get('/tasks', [CrmTaskController::class, 'index'])->name('api.crm.tasks.index');
+        Route::post('/tasks/add', [CrmTaskController::class, 'store'])->name('api.crm.tasks.store');
+        Route::post('/tasks/update', [CrmTaskController::class, 'update'])->name('api.crm.tasks.update');
+        Route::post('/tasks/complete', [CrmTaskController::class, 'complete'])->name('api.crm.tasks.complete');
+
+        Route::get('/reminders', [ContactReminderController::class, 'index'])->name('api.crm.reminders.index');
+        Route::get('/contacts/reminders/list', [ContactReminderController::class, 'forContact'])->name('api.crm.contacts.reminders.index');
+        Route::post('/contacts/reminders/add', [ContactReminderController::class, 'store'])->name('api.crm.contacts.reminders.store');
+        Route::post('/contacts/reminders/update', [ContactReminderController::class, 'update'])->name('api.crm.contacts.reminders.update');
+        Route::post('/contacts/reminders/complete', [ContactReminderController::class, 'complete'])->name('api.crm.contacts.reminders.complete');
+        Route::post('/contacts/reminders/dismiss', [ContactReminderController::class, 'dismiss'])->name('api.crm.contacts.reminders.dismiss');
+        Route::post('/contacts/reminders/snooze', [ContactReminderController::class, 'snooze'])->name('api.crm.contacts.reminders.snooze');
 
         Route::get('/contacts/notes/list', [GhlCompatController::class, 'listContactNotes'])->name('api.crm.contacts.notes.index');
         Route::get('/contacts/notes/summaries-by-phone', [ContactNoteSummaryController::class, 'byPhone'])->name('api.crm.contacts.notes.summaries-by-phone');

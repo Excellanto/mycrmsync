@@ -11,6 +11,7 @@ use App\Integrations\FetchTenantIntegrationCrmUsers;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Contacts\ContactCallStatsService;
+use App\Services\Contacts\ContactReminderService;
 use App\Services\VoiceNote\ContactNoteListEnricher;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +38,7 @@ final class GhlCompatController extends Controller
         private FetchTenantIntegrationCrmUsers $fetchTenantIntegrationCrmUsers,
         private ContactNoteListEnricher $contactNoteListEnricher,
         private ContactCallStatsService $contactCallStats,
+        private ContactReminderService $reminders,
     ) {}
 
     /**
@@ -426,7 +428,7 @@ final class GhlCompatController extends Controller
      */
     public function listContactNotes(Request $request): JsonResponse
     {
-        ['tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
+        ['user' => $user, 'tenant' => $tenant] = $this->resolveAuthenticatedContext($request);
 
         $data = $request->validate([
             'contactId' => ['nullable', 'string'],
@@ -456,6 +458,7 @@ final class GhlCompatController extends Controller
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
             return $this->proxyArray(fn () => $this->enrichedContactNotes(
                 $tenant,
+                $user,
                 $this->myCrmSync->listContactNotes($tenant, $contactId, $noteDefaults)
             ));
         }
@@ -463,6 +466,7 @@ final class GhlCompatController extends Controller
         if ($this->isZohoTenant($tenant)) {
             return $this->proxyArray(fn () => $this->enrichedContactNotes(
                 $tenant,
+                $user,
                 $this->zoho->listContactNotes(
                     $tenant,
                     $contactId,
@@ -474,6 +478,7 @@ final class GhlCompatController extends Controller
 
         return $this->proxyArray(fn () => $this->enrichedContactNotes(
             $tenant,
+            $user,
             $this->ghl->listContactNotes($tenant, $contactId, $noteDefaults)
         ));
     }
@@ -485,6 +490,8 @@ final class GhlCompatController extends Controller
      * @bodyParam contactId string required CRM contact id from list/search (GoHighLevel or Zoho). Example: 550e8400-e29b-41d4-a716-446655440000
      * @bodyParam body string required Note text. Example: Prospect wanted to schedule call on Friday at 11:30 AM
      * @bodyParam urls string[] optional Attachment URLs. Example: ["https://your-s3-bucket.com/uploads/audio_brief.mp3"]
+     * @bodyParam reminder_at string optional ISO 8601 time. When set, saves a MysimConnect reminder on the new note for the authenticated user. Send null or omit to skip. Example: 2026-10-03T10:00:00+05:30
+     * @bodyParam contact_name string optional Contact display name stored on the reminder when the CRM contact is not local. Example: Jane Doe
      *
      * @response 200 {"success":true,"status":true,"notes":[{"id":"ZuYmxcy8lNxQyFEJWurd","body":"Prospect wanted to schedule call on Friday at 11:30 AM","attachments":["https://your-s3-bucket.com/uploads/audio_brief.mp3"],"title":"","user_name":"Excellanto Developers","userId":"1303041000000453001","contactId":"1303041000000523005","dateAdded":"2026-05-05T21:16:56.211Z","dateUpdated":""}]}
      */
@@ -497,6 +504,8 @@ final class GhlCompatController extends Controller
             'body' => ['required', 'string'],
             'urls' => ['sometimes', 'nullable', 'array'],
             'urls.*' => ['string', 'url'],
+            'reminder_at' => ['sometimes', 'nullable', 'date'],
+            'contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
         $contactId = trim($data['contactId']);
 
@@ -512,17 +521,22 @@ final class GhlCompatController extends Controller
         $noteActorDefaults = $this->contactNoteResponseDefaults($user, $tenant, $contactId, overrideOwner: true);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->myCrmSync->createContactNote(
+            $response = $this->proxyArray(fn () => $this->myCrmSync->createContactNote(
                 $tenant,
                 $contactId,
                 $payload,
                 $user,
                 $noteActorDefaults
             ), withoutMeta: true, latestNoteOnly: true);
-        }
-
-        if ($this->isZohoTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->zoho->createContactNote(
+        } elseif ($this->isZohoTenant($tenant)) {
+            $response = $this->proxyArray(fn () => $this->zoho->createContactNote(
+                $tenant,
+                $contactId,
+                $payload,
+                $noteActorDefaults
+            ), withoutMeta: true, latestNoteOnly: true);
+        } else {
+            $response = $this->proxyArray(fn () => $this->ghl->createContactNote(
                 $tenant,
                 $contactId,
                 $payload,
@@ -530,12 +544,7 @@ final class GhlCompatController extends Controller
             ), withoutMeta: true, latestNoteOnly: true);
         }
 
-        return $this->proxyArray(fn () => $this->ghl->createContactNote(
-            $tenant,
-            $contactId,
-            $payload,
-            $noteActorDefaults
-        ), withoutMeta: true, latestNoteOnly: true);
+        return $this->respondWithNoteReminder($response, $user, $contactId, $request);
     }
 
     /**
@@ -546,6 +555,8 @@ final class GhlCompatController extends Controller
      * @bodyParam user_id int required Local MysimConnect user id returned by OTP verification. Example: 1
      * @bodyParam body string required Note text. Example: Updated text.
      * @bodyParam urls string[] required Attachment URLs. Example: ["https://your-s3-bucket.com/uploads/audio_brief.mp3"]
+     * @bodyParam reminder_at string optional ISO 8601 time for the authenticated user's reminder on this note. Send null or an empty string to clear it. Omit to leave an existing reminder unchanged. Example: 2026-10-03T10:00:00+05:30
+     * @bodyParam contact_name string optional Contact display name stored on the reminder. Example: Jane Doe
      */
     public function updateContactNote(Request $request): JsonResponse
     {
@@ -558,6 +569,8 @@ final class GhlCompatController extends Controller
                 'body' => ['required', 'string'],
                 'urls' => ['required', 'array'],
                 'urls.*' => ['string', 'url'],
+                'reminder_at' => ['sometimes', 'nullable', 'date'],
+                'contact_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             ]
         ));
         $contactId = $this->resolvedContactIdFromData($data);
@@ -578,7 +591,22 @@ final class GhlCompatController extends Controller
         $payload = $this->contactNoteCreatePayload($data);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->myCrmSync->updateContactNote(
+            $response = $this->proxyArray(fn () => $this->myCrmSync->updateContactNote(
+                $tenant,
+                $contactId,
+                $noteId,
+                $payload,
+                $this->contactNoteResponseDefaults($user, $tenant, $contactId, now()->toISOString())
+            ), withoutMeta: true, noteId: $noteId);
+        } elseif ($this->isZohoTenant($tenant)) {
+            $response = $this->proxyArray(fn () => $this->zoho->updateContactNote(
+                $tenant,
+                $contactId,
+                $noteId,
+                $payload
+            ), withoutMeta: true, noteId: $noteId);
+        } else {
+            $response = $this->proxyArray(fn () => $this->ghl->updateContactNote(
                 $tenant,
                 $contactId,
                 $noteId,
@@ -587,22 +615,7 @@ final class GhlCompatController extends Controller
             ), withoutMeta: true, noteId: $noteId);
         }
 
-        if ($this->isZohoTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->zoho->updateContactNote(
-                $tenant,
-                $contactId,
-                $noteId,
-                $payload
-            ), withoutMeta: true, noteId: $noteId);
-        }
-
-        return $this->proxyArray(fn () => $this->ghl->updateContactNote(
-            $tenant,
-            $contactId,
-            $noteId,
-            $payload,
-            $this->contactNoteResponseDefaults($user, $tenant, $contactId, now()->toISOString())
-        ), withoutMeta: true, noteId: $noteId);
+        return $this->respondWithNoteReminder($response, $user, $contactId, $request);
     }
 
     /**
@@ -636,18 +649,22 @@ final class GhlCompatController extends Controller
         }
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->myCrmSync->deleteContactNote($tenant, $contactId, $noteId));
+            $response = $this->proxyArray(fn () => $this->myCrmSync->deleteContactNote($tenant, $contactId, $noteId));
+        } elseif ($this->isZohoTenant($tenant)) {
+            $response = $this->proxyArray(fn () => $this->zoho->deleteContactNote($tenant, $noteId));
+        } else {
+            $response = $this->proxy(fn () => $this->ghl->request(
+                $tenant,
+                'DELETE',
+                "/contacts/{$contactId}/notes/{$noteId}"
+            ));
         }
 
-        if ($this->isZohoTenant($tenant)) {
-            return $this->proxyArray(fn () => $this->zoho->deleteContactNote($tenant, $noteId));
+        if ($response->getStatusCode() < 400) {
+            $this->reminders->deleteForNote((int) $tenant->id, $noteId);
         }
 
-        return $this->proxy(fn () => $this->ghl->request(
-            $tenant,
-            'DELETE',
-            "/contacts/{$contactId}/notes/{$noteId}"
-        ));
+        return $response;
     }
 
     /**
@@ -993,11 +1010,49 @@ final class GhlCompatController extends Controller
      * @param  array{0: array<string, mixed>, 1: int}  $result
      * @return array{0: array<string, mixed>, 1: int}
      */
-    private function enrichedContactNotes(Tenant $tenant, array $result): array
+    private function enrichedContactNotes(Tenant $tenant, User $user, array $result): array
     {
         [$json, $status] = $result;
+        $json = $this->contactNoteListEnricher->enrich($tenant, $json);
+        $json = $this->reminders->decorateNotesPayload($user, $json);
 
-        return [$this->contactNoteListEnricher->enrich($tenant, $json), $status];
+        return [$json, $status];
+    }
+
+    private function respondWithNoteReminder(
+        JsonResponse $response,
+        User $user,
+        string $contactId,
+        Request $request,
+    ): JsonResponse {
+        if ($response->getStatusCode() >= 400) {
+            return $response;
+        }
+
+        $json = $response->getData(true);
+        if (! is_array($json)) {
+            return $response;
+        }
+
+        if ($request->exists('reminder_at')) {
+            $note = $json['notes'][0] ?? null;
+            $noteId = is_array($note) ? trim((string) ($note['id'] ?? '')) : '';
+            if ($noteId !== '' && $user->tenant_id !== null) {
+                $this->reminders->syncPendingForNote(
+                    (int) $user->tenant_id,
+                    $user,
+                    $contactId,
+                    $noteId,
+                    $request->input('reminder_at'),
+                    (string) $request->input('body', ''),
+                    $request->input('contact_name'),
+                );
+            }
+        }
+
+        $json = $this->reminders->decorateNotesPayload($user, $json);
+
+        return response()->json($json, $response->getStatusCode());
     }
 
     /**

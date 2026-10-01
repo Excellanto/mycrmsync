@@ -238,6 +238,74 @@ final class GoHighLevelApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function createContactTask(Tenant $tenant, string $contactId, array $payload): string
+    {
+        $response = $this->request(
+            $tenant,
+            'POST',
+            "/contacts/{$contactId}/tasks",
+            json: $payload,
+            versionOverride: '2021-07-28',
+        );
+
+        return $this->taskIdFromResponse($this->successfulJson($response));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function updateContactTask(Tenant $tenant, string $contactId, string $taskId, array $payload): void
+    {
+        $response = $this->request(
+            $tenant,
+            'PUT',
+            "/contacts/{$contactId}/tasks/{$taskId}",
+            json: $payload,
+            versionOverride: '2021-07-28',
+        );
+        $this->successfulJson($response);
+    }
+
+    public function completeContactTask(Tenant $tenant, string $contactId, string $taskId): void
+    {
+        $response = $this->request(
+            $tenant,
+            'PUT',
+            "/contacts/{$contactId}/tasks/{$taskId}/completed",
+            json: ['completed' => true],
+            versionOverride: '2021-07-28',
+        );
+        $this->successfulJson($response);
+    }
+
+    public function deleteContactTask(Tenant $tenant, string $contactId, string $taskId): void
+    {
+        $response = $this->request(
+            $tenant,
+            'DELETE',
+            "/contacts/{$contactId}/tasks/{$taskId}",
+            versionOverride: '2021-07-28',
+        );
+        $this->successfulJson($response);
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    private function taskIdFromResponse(array $json): string
+    {
+        $id = trim((string) (data_get($json, 'task.id') ?? data_get($json, 'id') ?? ''));
+
+        if ($id === '') {
+            throw new RuntimeException('GoHighLevel did not return a task id.', 502);
+        }
+
+        return $id;
+    }
+
+    /**
      * @param  array<string, mixed>  $query
      * @param  array<string, mixed>|null  $json
      */

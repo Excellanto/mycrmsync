@@ -178,6 +178,34 @@ Route::prefix('admin')
         Route::delete('/contacts/{contact}/notes/{note}', [\App\Http\Controllers\Admin\ContactController::class, 'destroyNote'])
             ->middleware('permission:contacts.update')
             ->name('contacts.notes.destroy');
+        Route::post('/reminders/{reminder}/complete', [\App\Http\Controllers\Admin\ReminderController::class, 'complete'])
+            ->name('reminders.complete');
+        Route::post('/reminders/{reminder}/dismiss', [\App\Http\Controllers\Admin\ReminderController::class, 'dismiss'])
+            ->name('reminders.dismiss');
+        Route::post('/reminders/{reminder}/snooze', [\App\Http\Controllers\Admin\ReminderController::class, 'snooze'])
+            ->name('reminders.snooze');
+
+        Route::get('/tasks', [\App\Http\Controllers\Admin\TaskController::class, 'index'])
+            ->middleware('permission:tasks.view')
+            ->name('tasks.index');
+        Route::get('/tasks/contacts', [\App\Http\Controllers\Admin\TaskController::class, 'searchContacts'])
+            ->middleware('permission:tasks.view')
+            ->name('tasks.contacts');
+        Route::post('/tasks', [\App\Http\Controllers\Admin\TaskController::class, 'store'])
+            ->middleware('permission:tasks.create')
+            ->name('tasks.store');
+        Route::put('/tasks/{task}', [\App\Http\Controllers\Admin\TaskController::class, 'update'])
+            ->middleware('permission:tasks.update')
+            ->name('tasks.update');
+        Route::post('/tasks/{task}/complete', [\App\Http\Controllers\Admin\TaskController::class, 'complete'])
+            ->middleware('permission:tasks.update')
+            ->name('tasks.complete');
+        Route::post('/tasks/{task}/status', [\App\Http\Controllers\Admin\TaskController::class, 'status'])
+            ->middleware('permission:tasks.update')
+            ->name('tasks.status');
+        Route::delete('/tasks/{task}', [\App\Http\Controllers\Admin\TaskController::class, 'destroy'])
+            ->middleware('permission:tasks.view')
+            ->name('tasks.destroy');
 
         // Tenants (tenants.view / tenants.update permissions; see TenantPolicy)
         Route::get('/tenants', [\App\Http\Controllers\TenantController::class, 'index'])

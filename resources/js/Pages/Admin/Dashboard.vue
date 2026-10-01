@@ -148,6 +148,78 @@
 				</Badge>
 			</div>
 
+			<DashboardSection class="mb-4" title="Reminders">
+				<p v-if="reminderError" class="mb-3 text-sm text-red-600">{{ reminderError }}</p>
+				<p v-if="!reminderRows.length" class="text-sm text-gray-500">No reminders due.</p>
+				<div v-else class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+					<div v-for="group in visibleReminderGroups" :key="group.key">
+						<h4 class="mb-2 text-sm font-medium" :class="group.key === 'overdue' ? 'text-red-700' : 'text-gray-700'">
+							{{ group.label }}
+							<span class="text-gray-400">({{ group.items.length }})</span>
+						</h4>
+						<ul class="space-y-2">
+							<li
+								v-for="reminder in group.items"
+								:key="reminder.id"
+								class="rounded-lg border border-gray-100 bg-gray-50 p-3"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0">
+										<Link
+											v-if="analytics.integration?.is_mycrmsync && reminder.local_contact && reminder.contact_name"
+											:href="route('admin.contacts.index', { search: reminder.contact_name })"
+											class="text-sm font-medium text-primary-700 hover:underline"
+										>
+											{{ reminder.contact_name }}
+										</Link>
+										<p v-else class="text-sm font-medium text-gray-800">
+											{{ reminder.contact_name || 'Contact' }}
+										</p>
+										<p v-if="Number(reminder.user_id) !== Number(currentUserId)" class="text-xs text-gray-500">{{ reminder.user_name }}</p>
+									</div>
+									<span class="shrink-0 text-xs text-gray-500">{{ formatDue(reminder.remind_at) }}</span>
+								</div>
+								<p v-if="reminder.note_excerpt" class="mt-1 text-sm text-gray-600">{{ reminder.note_excerpt }}</p>
+								<div class="mt-2 flex flex-wrap gap-2">
+									<button
+										type="button"
+										class="text-xs text-primary-700 hover:underline disabled:opacity-50"
+										:disabled="reminderBusyId === reminder.id"
+										@click="completeReminder(reminder)"
+									>
+										Done
+									</button>
+									<button
+										type="button"
+										class="text-xs text-gray-600 hover:underline disabled:opacity-50"
+										:disabled="reminderBusyId === reminder.id"
+										@click="snoozeReminder(reminder, 60)"
+									>
+										1 hour
+									</button>
+									<button
+										type="button"
+										class="text-xs text-gray-600 hover:underline disabled:opacity-50"
+										:disabled="reminderBusyId === reminder.id"
+										@click="snoozeReminder(reminder, 1440)"
+									>
+										Tomorrow
+									</button>
+									<button
+										type="button"
+										class="text-xs text-red-600 hover:underline disabled:opacity-50"
+										:disabled="reminderBusyId === reminder.id"
+										@click="dismissReminder(reminder)"
+									>
+										Dismiss
+									</button>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</DashboardSection>
+
 			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<StatCard label="Calls" :value="formatNumber(analytics.summary.total_calls)" icon="pi pi-phone" tone="primary" />
 				<StatCard label="Recordings" :value="formatNumber(analytics.recordings.total)" icon="pi pi-volume-up" tone="purple" />
@@ -330,8 +402,9 @@ import KeyValueList from '@/Components/Dashboard/KeyValueList.vue';
 import SentimentBreakdown from '@/Components/Dashboard/SentimentBreakdown.vue';
 import SimpleBarChart from '@/Components/Dashboard/SimpleBarChart.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
-import { router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { axios } from '@/bootstrap';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 const page = usePage();
 const isMaster = computed(() => page.props.auth?.user?.is_master || false);
@@ -339,7 +412,87 @@ const isMaster = computed(() => page.props.auth?.user?.is_master || false);
 const props = defineProps({
 	analytics: Object,
 	period: { type: String, default: '30d' },
+	reminders: { type: Array, default: () => [] },
 });
+
+const reminderRows = ref([...(props.reminders || [])]);
+const reminderError = ref('');
+const reminderBusyId = ref(null);
+const currentUserId = computed(() => page.props.auth?.user?.id);
+
+watch(
+	() => props.reminders,
+	(value) => {
+		reminderRows.value = value ? [...value] : [];
+	},
+);
+
+const visibleReminderGroups = computed(() => {
+	const now = new Date();
+	const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+	const upcomingLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8);
+	const groups = {
+		overdue: [],
+		today: [],
+		upcoming: [],
+		later: [],
+	};
+
+	for (const reminder of reminderRows.value) {
+		const at = new Date(reminder.remind_at);
+		if (Number.isNaN(at.getTime()) || at < now) {
+			groups.overdue.push(reminder);
+		} else if (at < startOfTomorrow) {
+			groups.today.push(reminder);
+		} else if (at < upcomingLimit) {
+			groups.upcoming.push(reminder);
+		} else {
+			groups.later.push(reminder);
+		}
+	}
+
+	return [
+		{ key: 'overdue', label: 'Overdue', items: groups.overdue },
+		{ key: 'today', label: 'Today', items: groups.today },
+		{ key: 'upcoming', label: 'Upcoming', items: groups.upcoming },
+		{ key: 'later', label: 'Later', items: groups.later },
+	].filter((group) => group.items.length > 0);
+});
+
+async function completeReminder(reminder) {
+	await runReminderAction(reminder, route('admin.reminders.complete', reminder.id), (data) => {
+		reminderRows.value = reminderRows.value.filter((row) => row.id !== reminder.id);
+		return data;
+	});
+}
+
+async function dismissReminder(reminder) {
+	await runReminderAction(reminder, route('admin.reminders.dismiss', reminder.id), () => {
+		reminderRows.value = reminderRows.value.filter((row) => row.id !== reminder.id);
+	});
+}
+
+async function snoozeReminder(reminder, minutes) {
+	await runReminderAction(reminder, route('admin.reminders.snooze', reminder.id), (data) => {
+		if (data?.reminder) {
+			reminderRows.value = reminderRows.value.map((row) => (row.id === reminder.id ? data.reminder : row));
+		}
+	}, { minutes });
+}
+
+async function runReminderAction(reminder, url, apply, body) {
+	reminderBusyId.value = reminder.id;
+	reminderError.value = '';
+
+	try {
+		const { data } = await axios.post(url, body);
+		apply(data);
+	} catch (err) {
+		reminderError.value = err?.response?.data?.message || err?.message || 'Could not update the reminder.';
+	} finally {
+		reminderBusyId.value = null;
+	}
+}
 
 const periodOptions = [
 	{ value: '7d', label: '7 days' },
@@ -374,6 +527,31 @@ function formatDuration(seconds) {
 function formatDateTime(value) {
 	if (!value) return '—';
 	return new Date(value).toLocaleString();
+}
+
+function formatDue(value) {
+	if (!value) return '—';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+	const day = date.getDate();
+	const month = date.toLocaleString('en-GB', { month: 'short' }).toUpperCase();
+	const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+	return `${ordinal(day)} ${month} ${date.getFullYear()}, ${time}`;
+}
+
+function ordinal(day) {
+	const mod100 = day % 100;
+	if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+	switch (day % 10) {
+		case 1:
+			return `${day}st`;
+		case 2:
+			return `${day}nd`;
+		case 3:
+			return `${day}rd`;
+		default:
+			return `${day}th`;
+	}
 }
 
 function sentimentColor(value) {

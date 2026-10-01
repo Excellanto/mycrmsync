@@ -4,6 +4,7 @@ namespace App\Services\Contacts;
 
 use App\Models\Contact;
 use App\Models\ContactNote;
+use App\Models\ContactReminder;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\ApplicationCache;
@@ -229,6 +230,11 @@ final class ContactService
 
     public function delete(Contact $contact): void
     {
+        ContactReminder::query()
+            ->where('tenant_id', $contact->tenant_id)
+            ->where('contact_id', (string) $contact->id)
+            ->delete();
+
         $contact->delete();
     }
 
@@ -281,6 +287,11 @@ final class ContactService
 
     public function deleteNote(ContactNote $note): void
     {
+        ContactReminder::query()
+            ->where('tenant_id', $note->tenant_id)
+            ->where('contact_note_id', (string) $note->id)
+            ->delete();
+
         $note->delete();
     }
 

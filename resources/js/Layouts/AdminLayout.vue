@@ -120,6 +120,28 @@
 				</Link>
 
 				<Link
+					v-if="showTasksNav"
+					:href="route('admin.tasks.index')"
+					:class="navRowClass(isPathActive('/admin/tasks'))"
+					:title="sidebarCollapsed ? 'My tasks' : undefined"
+				>
+					<span
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+						:class="iconWrapClass(isPathActive('/admin/tasks'))"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+							/>
+						</svg>
+					</span>
+					<span v-show="!sidebarCollapsed" class="truncate">My tasks</span>
+				</Link>
+
+				<Link
 					v-if="showContactManagementNav"
 					:href="route('admin.contacts.index')"
 					:class="navRowClass(isPathActive('/admin/contacts'))"
@@ -797,6 +819,10 @@ const tenantsNavTitle = computed(() => (user.value?.is_master ? 'Tenants' : 'Com
 const showCallLogsNav = computed(() => {
 	if (showAllMenus.value) return true;
 	return canShowNav('nav.crm.call-logs.show', 'call-logs.view');
+});
+const showTasksNav = computed(() => {
+	if (showAllMenus.value) return true;
+	return canShowNav('nav.crm.tasks.show', 'tasks.view');
 });
 
 const showContactManagementNav = computed(() => {

@@ -534,6 +534,16 @@
 						</div>
 						<div v-if="editingNoteId === note.id" class="space-y-2">
 							<textarea v-model="noteEditBody" rows="4" class="w-full rounded-lg border-gray-300 text-sm" />
+							<label class="flex items-center gap-2 text-sm text-gray-700">
+								<input v-model="noteEditReminderEnabled" type="checkbox" class="rounded border-gray-300 text-primary-600" />
+								Set a reminder
+							</label>
+							<input
+								v-if="noteEditReminderEnabled"
+								v-model="noteEditReminderAt"
+								type="datetime-local"
+								class="w-full rounded-lg border-gray-300 text-sm"
+							/>
 							<div class="flex gap-2">
 								<button type="button" class="rounded bg-primary-600 px-2 py-1 text-xs text-white" @click="saveNoteEdit(note)">
 									Save
@@ -545,6 +555,9 @@
 						</div>
 						<template v-else>
 							<div class="whitespace-pre-wrap text-sm text-gray-800">{{ note.body }}</div>
+							<div v-if="note.reminder?.remind_at" class="mt-2 text-xs" :class="isReminderOverdue(note.reminder) ? 'text-red-600' : 'text-amber-700'">
+								Reminder · {{ formatDate(note.reminder.remind_at) }}
+							</div>
 							<div v-if="note.attachments?.length" class="mt-3 space-y-2 border-t border-gray-100 pt-3">
 								<div
 									v-for="att in note.attachments"
@@ -577,6 +590,16 @@
 				<div v-if="canUpdate" class="border-t border-gray-200 pt-4">
 					<label class="mb-1 block text-sm font-medium text-gray-700">Add note</label>
 					<textarea v-model="newNoteBody" rows="4" class="mb-2 w-full rounded-lg border-gray-300 text-sm" placeholder="Write a note..." />
+					<label class="mb-2 flex items-center gap-2 text-sm text-gray-700">
+						<input v-model="newNoteReminderEnabled" type="checkbox" class="rounded border-gray-300 text-primary-600" />
+						Set a reminder
+					</label>
+					<input
+						v-if="newNoteReminderEnabled"
+						v-model="newNoteReminderAt"
+						type="datetime-local"
+						class="mb-2 w-full rounded-lg border-gray-300 text-sm"
+					/>
 					<button
 						type="button"
 						class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50"
@@ -683,6 +706,27 @@ function formatDate(value) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 	return date.toLocaleString();
+}
+
+function toDatetimeLocal(value) {
+	if (!value) return '';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return '';
+	const pad = (part) => String(part).padStart(2, '0');
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromDatetimeLocal(value) {
+	if (!value) return null;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return date.toISOString();
+}
+
+function isReminderOverdue(reminder) {
+	if (!reminder?.remind_at) return false;
+	const date = new Date(reminder.remind_at);
+	return !Number.isNaN(date.getTime()) && date.getTime() < Date.now();
 }
 
 const contactModalVisible = ref(false);
@@ -813,6 +857,10 @@ const newNoteBody = ref('');
 const noteSaving = ref(false);
 const editingNoteId = ref(null);
 const noteEditBody = ref('');
+const newNoteReminderEnabled = ref(false);
+const newNoteReminderAt = ref('');
+const noteEditReminderEnabled = ref(false);
+const noteEditReminderAt = ref('');
 
 async function openNotesDrawer(contact) {
 	activeContact.value = contact;
@@ -821,6 +869,8 @@ async function openNotesDrawer(contact) {
 	contactMedia.value = [];
 	notesError.value = '';
 	newNoteBody.value = '';
+	newNoteReminderEnabled.value = false;
+	newNoteReminderAt.value = '';
 	editingNoteId.value = null;
 	await loadNotes();
 }
@@ -863,18 +913,32 @@ function formatDurationSec(seconds) {
 async function addNote() {
 	if (!activeContact.value?.id || !newNoteBody.value.trim()) return;
 
+	let reminderAt = null;
+	if (newNoteReminderEnabled.value) {
+		reminderAt = fromDatetimeLocal(newNoteReminderAt.value);
+		if (!reminderAt) {
+			notesError.value = 'Pick a date and time for the reminder.';
+			return;
+		}
+	}
+
 	noteSaving.value = true;
+	notesError.value = '';
 
 	try {
-		const { data } = await axios.post(route('admin.contacts.notes.store', activeContact.value.id), {
-			body: newNoteBody.value.trim(),
-		});
+		const payload = { body: newNoteBody.value.trim() };
+		if (reminderAt) {
+			payload.reminder_at = reminderAt;
+		}
+		const { data } = await axios.post(route('admin.contacts.notes.store', activeContact.value.id), payload);
 		if (data.note) {
 			notes.value = [data.note, ...notes.value];
 		} else {
 			await loadNotes();
 		}
 		newNoteBody.value = '';
+		newNoteReminderEnabled.value = false;
+		newNoteReminderAt.value = '';
 	} catch (err) {
 		notesError.value = err?.response?.data?.message || err.message || 'Could not save note.';
 	} finally {
@@ -885,19 +949,33 @@ async function addNote() {
 function startEditNote(note) {
 	editingNoteId.value = note.id;
 	noteEditBody.value = note.body;
+	noteEditReminderEnabled.value = Boolean(note.reminder?.remind_at);
+	noteEditReminderAt.value = toDatetimeLocal(note.reminder?.remind_at);
 }
 
 function cancelNoteEdit() {
 	editingNoteId.value = null;
 	noteEditBody.value = '';
+	noteEditReminderEnabled.value = false;
+	noteEditReminderAt.value = '';
 }
 
 async function saveNoteEdit(note) {
 	if (!activeContact.value?.id) return;
 
+	let reminderAt = null;
+	if (noteEditReminderEnabled.value) {
+		reminderAt = fromDatetimeLocal(noteEditReminderAt.value);
+		if (!reminderAt) {
+			notesError.value = 'Pick a date and time for the reminder.';
+			return;
+		}
+	}
+
 	try {
 		const { data } = await axios.put(route('admin.contacts.notes.update', [activeContact.value.id, note.id]), {
 			body: noteEditBody.value.trim(),
+			reminder_at: reminderAt,
 		});
 		const updated = data.note;
 		notes.value = notes.value.map((row) => (row.id === note.id ? updated : row));

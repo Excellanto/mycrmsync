@@ -120,6 +120,9 @@ const permissionLabels = {
 	'activity-logs.delete': 'Delete activity logs',
 	'call-logs.view': 'View call logs',
 	'call-logs.delete': 'Delete call logs',
+	'tasks.view': 'View tasks',
+	'tasks.create': 'Create tasks',
+	'tasks.update': 'Edit tasks',
 	'contacts.view': 'View contacts',
 	'contacts.create': 'Create contacts',
 	'contacts.update': 'Edit contacts',
@@ -144,7 +147,8 @@ const subModuleNavPermissionMap = {
 		'Mapped APIs': 'nav.api-management.mapped-apis.show'
 	},
 	CRM: {
-		'Call Logs': 'nav.crm.call-logs.show'
+		'Call Logs': 'nav.crm.call-logs.show',
+		Tasks: 'nav.crm.tasks.show'
 	},
 	'Contact Management': {
 		Contacts: 'nav.contact-management.contacts.show'

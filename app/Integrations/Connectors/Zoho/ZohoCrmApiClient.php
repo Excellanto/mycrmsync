@@ -300,6 +300,58 @@ final class ZohoCrmApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $fields
+     */
+    public function createTask(Tenant $tenant, array $fields): string
+    {
+        $response = $this->request($tenant, 'POST', '/Tasks', json: [
+            'data' => [$fields],
+        ]);
+
+        return $this->taskIdFromWrite($this->successfulJson($response), 'Zoho task was not created.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     */
+    public function updateTask(Tenant $tenant, string $taskId, array $fields): void
+    {
+        $response = $this->request($tenant, 'PUT', "/Tasks/{$taskId}", json: [
+            'data' => [$fields],
+        ]);
+        $json = $this->successfulJson($response);
+        $status = strtolower((string) data_get($json, 'data.0.status', ''));
+
+        if ($status === 'error') {
+            $message = trim((string) data_get($json, 'data.0.message', 'Zoho task was not updated.'));
+            throw new RuntimeException($message !== '' ? $message : 'Zoho task was not updated.', 422);
+        }
+    }
+
+    public function deleteTask(Tenant $tenant, string $taskId): void
+    {
+        $response = $this->request($tenant, 'DELETE', "/Tasks/{$taskId}");
+        $this->successfulJson($response);
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    private function taskIdFromWrite(array $json, string $fallback): string
+    {
+        $row = data_get($json, 'data.0');
+        $status = strtolower((string) data_get($row, 'status', ''));
+        $id = trim((string) data_get($row, 'details.id', ''));
+
+        if ($status === 'error' || $id === '') {
+            $message = trim((string) data_get($row, 'message', $fallback));
+            throw new RuntimeException($message !== '' ? $message : $fallback, 422);
+        }
+
+        return $id;
+    }
+
+    /**
      * @param  array<string, mixed>  $query
      * @param  array<string, mixed>|null  $json
      */

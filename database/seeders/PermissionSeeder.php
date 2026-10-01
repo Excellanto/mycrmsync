@@ -47,6 +47,10 @@ class PermissionSeeder extends Seeder
             'call-logs.delete',
             'nav.crm.show',
             'nav.crm.call-logs.show',
+            'nav.crm.tasks.show',
+            'tasks.view',
+            'tasks.create',
+            'tasks.update',
             // Contacts (MyCrmSync)
             'contacts.view',
             'contacts.create',

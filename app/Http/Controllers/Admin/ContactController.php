@@ -11,12 +11,14 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\VoiceNote;
 use App\Services\Contacts\ContactImportService;
+use App\Services\Contacts\ContactReminderService;
 use App\Services\Contacts\ContactService;
 use App\Services\VoiceNote\VoiceNoteAttachmentSerializer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,6 +29,7 @@ class ContactController extends Controller
         private ContactService $contacts,
         private ContactImportService $contactImport,
         private VoiceNoteAttachmentSerializer $voiceNoteAttachments,
+        private ContactReminderService $reminders,
         private MyCrmSyncContactMapper $mapper = new MyCrmSyncContactMapper,
     ) {}
 
@@ -174,17 +177,22 @@ class ContactController extends Controller
         $this->authorize('view', $contact);
 
         $notes = $this->contacts->listNotes($contact);
+        $noteIds = $notes->pluck('id')->map(fn ($id) => (string) $id)->all();
         $attachmentsByNoteId = $this->voiceNotesGroupedByCrmNoteId(
             (int) $contact->tenant_id,
-            $notes->pluck('id')->map(fn ($id) => (string) $id)->all()
+            $noteIds
         );
         $orphanMedia = $this->orphanVoiceNotesForContact($contact);
+        /** @var User $user */
+        $user = Auth::user();
+        $remindersByNote = $this->reminders->pendingPayloadsForNotes($user, $noteIds);
 
         return response()->json([
             'contact' => $this->contactPayload($contact),
             'notes' => $notes->map(fn (ContactNote $note) => $this->notePayload(
                 $note,
-                $attachmentsByNoteId->get((string) $note->id, collect())
+                $attachmentsByNoteId->get((string) $note->id, collect()),
+                $remindersByNote[(string) $note->id] ?? null,
             ))->values(),
             'media' => $this->voiceNoteAttachments->serializeMany($orphanMedia),
         ]);
@@ -197,14 +205,20 @@ class ContactController extends Controller
         $data = $request->validate([
             'body' => ['required', 'string'],
             'title' => ['nullable', 'string', 'max:255'],
+            'reminder_at' => ['sometimes', 'nullable', 'date'],
         ]);
 
         /** @var User $user */
         $user = Auth::user();
-        $note = $this->contacts->createNote($contact, $user, $data['body'], $data['title'] ?? '');
+        $note = DB::transaction(function () use ($contact, $user, $data, $request) {
+            $note = $this->contacts->createNote($contact, $user, $data['body'], $data['title'] ?? '');
+            $this->syncNoteReminder($request, $contact, $user, $note);
+
+            return $note;
+        });
 
         return response()->json([
-            'note' => $this->notePayload($note),
+            'note' => $this->notePayload($note, null, $this->noteReminderPayload($user, $note)),
         ]);
     }
 
@@ -220,12 +234,20 @@ class ContactController extends Controller
         $data = $request->validate([
             'body' => ['required', 'string'],
             'title' => ['nullable', 'string', 'max:255'],
+            'reminder_at' => ['sometimes', 'nullable', 'date'],
         ]);
 
-        $updated = $this->contacts->updateNote($note, $data['body'], $data['title'] ?? '');
+        /** @var User $user */
+        $user = Auth::user();
+        $updated = DB::transaction(function () use ($contact, $user, $data, $request, $note) {
+            $updated = $this->contacts->updateNote($note, $data['body'], $data['title'] ?? '');
+            $this->syncNoteReminder($request, $contact, $user, $updated);
+
+            return $updated;
+        });
 
         return response()->json([
-            'note' => $this->notePayload($updated),
+            'note' => $this->notePayload($updated, null, $this->noteReminderPayload($user, $updated)),
         ]);
     }
 
@@ -253,9 +275,10 @@ class ContactController extends Controller
 
     /**
      * @param  \Illuminate\Support\Collection<int, VoiceNote>|null  $attachments
+     * @param  array<string, mixed>|null  $reminder
      * @return array<string, mixed>
      */
-    private function notePayload(ContactNote $note, $attachments = null): array
+    private function notePayload(ContactNote $note, $attachments = null, ?array $reminder = null): array
     {
         $note->loadMissing('user');
         $attachmentRows = $attachments ?? collect();
@@ -270,7 +293,35 @@ class ContactController extends Controller
             'dateAdded' => $note->created_at?->toIso8601String() ?? '',
             'dateUpdated' => $note->updated_at?->toIso8601String() ?? '',
             'attachments' => $this->voiceNoteAttachments->serializeMany($attachmentRows),
+            'reminder' => $reminder,
         ];
+    }
+
+    private function syncNoteReminder(Request $request, Contact $contact, User $user, ContactNote $note): void
+    {
+        if (! $request->exists('reminder_at')) {
+            return;
+        }
+
+        $name = trim($contact->first_name.' '.$contact->last_name);
+
+        $this->reminders->syncPendingForNote(
+            (int) $contact->tenant_id,
+            $user,
+            (string) $contact->id,
+            (string) $note->id,
+            $request->input('reminder_at'),
+            (string) $note->body,
+            $name,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function noteReminderPayload(User $user, ContactNote $note): ?array
+    {
+        return $this->reminders->pendingPayloadsForNotes($user, [(string) $note->id])[(string) $note->id] ?? null;
     }
 
     /**

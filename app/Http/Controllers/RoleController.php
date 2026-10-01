@@ -69,6 +69,7 @@ class RoleController extends Controller
         // CRM / call logs
         $crmSubs = [
             'Call Logs' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'call-logs.') || $p->name === 'nav.crm.call-logs.show')->sortBy('name')->values(),
+            'Tasks' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'tasks.') || $p->name === 'nav.crm.tasks.show')->sortBy('name')->values(),
         ];
         $crmSubs = array_filter($crmSubs, fn ($arr) => $arr->isNotEmpty());
         foreach ($crmSubs as $subs) {
