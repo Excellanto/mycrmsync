@@ -34,6 +34,11 @@ if (file_exists(__DIR__.'/auth.php')) {
     require __DIR__.'/auth.php';
 }
 
+// Outside admin permission and tenant checks so returning still works
+// when the signed-in user cannot open the admin panel.
+Route::middleware('auth')->post('/impersonation/leave', [\App\Http\Controllers\ImpersonationController::class, 'leave'])
+    ->name('impersonation.leave');
+
 // Authenticated user routes (same access rules as /admin — keep login redirect consistent)
 Route::middleware([
     'auth',
@@ -77,6 +82,7 @@ Route::prefix('admin')
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{user}/impersonate', [\App\Http\Controllers\ImpersonationController::class, 'store'])->name('users.impersonate');
         Route::post('/users/{user}/assign-roles', [UserController::class, 'assignRoles'])->name('users.assignRoles');
         Route::post('/users/{user}/give-permissions', [UserController::class, 'givePermissions'])->name('users.givePermissions');
         Route::get('/role-assignment-rules', [RoleAssignmentRulesController::class, 'index'])->name('role-assignment-rules.index');
@@ -178,6 +184,19 @@ Route::prefix('admin')
         Route::delete('/contacts/{contact}/notes/{note}', [\App\Http\Controllers\Admin\ContactController::class, 'destroyNote'])
             ->middleware('permission:contacts.update')
             ->name('contacts.notes.destroy');
+
+        Route::get('/tags', [\App\Http\Controllers\Admin\TagController::class, 'index'])
+            ->middleware('permission:tags.view')
+            ->name('tags.index');
+        Route::post('/tags', [\App\Http\Controllers\Admin\TagController::class, 'store'])
+            ->middleware('permission:tags.create')
+            ->name('tags.store');
+        Route::put('/tags', [\App\Http\Controllers\Admin\TagController::class, 'update'])
+            ->middleware('permission:tags.update')
+            ->name('tags.update');
+        Route::delete('/tags', [\App\Http\Controllers\Admin\TagController::class, 'destroy'])
+            ->middleware('permission:tags.delete')
+            ->name('tags.destroy');
         Route::post('/reminders/{reminder}/complete', [\App\Http\Controllers\Admin\ReminderController::class, 'complete'])
             ->name('reminders.complete');
         Route::post('/reminders/{reminder}/dismiss', [\App\Http\Controllers\Admin\ReminderController::class, 'dismiss'])

@@ -117,8 +117,9 @@ return [
     | Email OTP (API passwordless login)
     |--------------------------------------------------------------------------
     |
-    | Optional 4-digit code to send instead of a random OTP. Leave unset for
-    | random codes. In non-production, defaults to 2468 when unset (dev only).
+    | Optional 4-digit code accepted at verify in every environment. Production
+    | email always sends a random code. Non-production email uses this value
+    | when set, otherwise 2468.
     |
     */
 

@@ -69,7 +69,8 @@ final class ApplicationCache
      *     user: array<string, mixed>|null,
      *     permissions: list<string>,
      *     can: array<string, mixed>,
-     *     contact_management_available: bool
+     *     contact_management_available: bool,
+     *     tag_management_available: bool
      * }
      */
     public static function rememberUserAuth(User $user): array
@@ -151,6 +152,20 @@ final class ApplicationCache
         Cache::forget('platform.has_mycrmsync_tenant');
     }
 
+    public static function rememberPlatformHasSupportedCrmTenant(): bool
+    {
+        return (bool) Cache::remember('platform.has_supported_crm_tenant', self::TTL_PLATFORM, function (): bool {
+            return Tenant::query()
+                ->whereIn('integration->slug', CrmApiClientResolver::supportedSlugs())
+                ->exists();
+        });
+    }
+
+    public static function forgetPlatformHasSupportedCrmTenant(): void
+    {
+        Cache::forget('platform.has_supported_crm_tenant');
+    }
+
     /**
      * @param  callable(): list<array{id: string, name: string}>  $resolver
      * @return list<array{id: string, name: string}>
@@ -182,7 +197,8 @@ final class ApplicationCache
      *     user: null,
      *     permissions: list<string>,
      *     can: array<string, mixed>,
-     *     contact_management_available: bool
+     *     contact_management_available: bool,
+     *     tag_management_available: bool
      * }
      */
     public static function emptyAuthBundle(): array
@@ -202,6 +218,7 @@ final class ApplicationCache
                 'contacts' => false,
             ],
             'contact_management_available' => false,
+            'tag_management_available' => false,
         ];
     }
 
@@ -239,7 +256,8 @@ final class ApplicationCache
      *     user: array<string, mixed>,
      *     permissions: list<string>,
      *     can: array<string, mixed>,
-     *     contact_management_available: bool
+     *     contact_management_available: bool,
+     *     tag_management_available: bool
      * }
      */
     private static function buildUserAuthPayload(User $user): array
@@ -257,10 +275,13 @@ final class ApplicationCache
         $permissionSet = array_fill_keys($permissions, true);
 
         $contactManagementAvailable = false;
+        $tagManagementAvailable = false;
         if ($user->tenant) {
             $contactManagementAvailable = CrmApiClientResolver::isMyCrmSyncTenant($user->tenant);
+            $tagManagementAvailable = CrmApiClientResolver::isSupportedTenant($user->tenant);
         } elseif ($user->isMaster()) {
             $contactManagementAvailable = self::rememberPlatformHasMyCrmSyncTenant();
+            $tagManagementAvailable = self::rememberPlatformHasSupportedCrmTenant();
         }
 
         return [
@@ -292,6 +313,7 @@ final class ApplicationCache
                 'contacts' => isset($permissionSet['contacts.view']),
             ],
             'contact_management_available' => $contactManagementAvailable,
+            'tag_management_available' => $tagManagementAvailable,
         ];
     }
 }

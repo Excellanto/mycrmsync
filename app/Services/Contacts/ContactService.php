@@ -6,6 +6,7 @@ use App\Models\Contact;
 use App\Models\ContactNote;
 use App\Models\ContactReminder;
 use App\Models\Tenant;
+use App\Models\TenantTag;
 use App\Models\User;
 use App\Support\ApplicationCache;
 use App\Support\PhoneNormalizer;
@@ -39,17 +40,28 @@ final class ContactService
     public function searchForTenant(Tenant $tenant, array $params = []): Collection
     {
         $limit = min(max((int) ($params['pageLimit'] ?? $params['limit'] ?? 20), 1), 100);
-        $query = trim((string) ($params['query'] ?? ''));
 
-        $builder = $this->filteredQuery($tenant->id, [
-            'search' => $query,
-            'assigned_to' => $params['assigned_to'] ?? null,
-            'tag' => $params['tag'] ?? null,
-        ])->with(['assignedUser:id,name,email']);
+        $builder = $this->filteredQuery($tenant->id, $this->apiListingFilters($params))
+            ->with(['assignedUser:id,name,email']);
 
         $this->applySort($builder, $params);
 
         return $builder->limit($limit)->get();
+    }
+
+    /**
+     * Filters shared by MyCrmSync contact list and search so the page and `meta.total` match.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array{search: string, assigned_to: int|null, tag: mixed}
+     */
+    public function apiListingFilters(array $params): array
+    {
+        return [
+            'search' => trim((string) ($params['query'] ?? '')),
+            'assigned_to' => $this->assigneeId($params),
+            'tag' => $params['tag'] ?? null,
+        ];
     }
 
     /**
@@ -188,17 +200,43 @@ final class ContactService
      * @param  list<array<string, mixed>>  $rows
      * @return array{created: int, skipped: int, errors: list<array{index: int, message: string}>}
      */
-    public function importMany(int $tenantId, array $rows): array
+    public function importMany(int $tenantId, array $rows, ?User $actor = null): array
     {
         $created = 0;
         $skipped = 0;
         $errors = [];
+        $usersByEmail = User::query()
+            ->where('tenant_id', $tenantId)
+            ->get(['id', 'name', 'email'])
+            ->keyBy(fn (User $user) => mb_strtolower($user->email));
 
         foreach ($rows as $row) {
             $index = (int) ($row['index'] ?? -1);
 
             try {
-                $this->create($tenantId, $row);
+                $assignee = null;
+                $assignedEmail = mb_strtolower(trim((string) ($row['assigned_to_email'] ?? '')));
+
+                if ($assignedEmail !== '') {
+                    $assignee = $usersByEmail->get($assignedEmail);
+
+                    if ($assignee === null) {
+                        throw ValidationException::withMessages([
+                            'assigned_to_email' => ["No user with email {$assignedEmail} belongs to this company."],
+                        ]);
+                    }
+
+                    $row['assigned_to'] = $assignee->id;
+                }
+
+                $contact = $this->create($tenantId, $row);
+                $note = trim((string) ($row['notes'] ?? ''));
+                $noteAuthor = $assignee ?? $actor;
+
+                if ($note !== '' && $noteAuthor !== null) {
+                    $this->createNote($contact, $noteAuthor, $note);
+                }
+
                 $created++;
             } catch (\Throwable $e) {
                 $skipped++;
@@ -331,6 +369,14 @@ final class ContactService
                 }
             }
 
+            foreach (TenantTag::query()->where('tenant_id', $tenantId)->pluck('name') as $name) {
+                $label = trim((string) $name);
+
+                if ($label !== '') {
+                    $unique[$label] = true;
+                }
+            }
+
             $out = [];
 
             foreach (array_keys($unique) as $label) {
@@ -352,6 +398,22 @@ final class ContactService
                 'tenant' => ['Contact management is only available for MyCrmSync tenants.'],
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function assigneeId(array $params): ?int
+    {
+        $raw = $params['assigned_to'] ?? $params['assignedTo'] ?? null;
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $id = (int) $raw;
+
+        return $id > 0 ? $id : null;
     }
 
     /**

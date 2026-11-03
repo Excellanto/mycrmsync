@@ -96,6 +96,7 @@ class TaskController extends Controller
             'tenant_id' => ['nullable', 'integer'],
             'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
         ]);
 
         $tenant = $this->resolveTenant($user, $data['tenant_id'] ?? null);
@@ -124,6 +125,7 @@ class TaskController extends Controller
             'contact_name' => ['nullable', 'string', 'max:255'],
             'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
         ]);
 
         $updated = $this->tasks->update($user, $task, $data);
@@ -138,7 +140,7 @@ class TaskController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $data = $request->validate([
-            'status' => ['required', 'string', 'in:open,completed,cancelled'],
+            'status' => ['required', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
         ]);
 
         $updated = $this->tasks->setStatus($user, $task, $data['status']);

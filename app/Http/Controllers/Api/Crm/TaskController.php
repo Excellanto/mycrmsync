@@ -36,7 +36,7 @@ final class TaskController extends Controller
      * A task with assignees is visible only to those users.
      *
      * @queryParam user_id int required Must match the authenticated user. Example: 1
-     * @queryParam status string Optional. `open` (default), `completed`, `cancelled`, or `all`. Example: open
+     * @queryParam status string Optional. `open` (default), `in_progress`, `completed`, `cancelled`, or `all`. Example: open
      * @queryParam kind string Optional. `all` (default), `tasks`, or `reminders`. Example: reminders
      *
      * @response 200 {"success":true,"message":"OK","data":{"tasks":[]}}
@@ -46,7 +46,7 @@ final class TaskController extends Controller
         ['user' => $user, 'tenant' => $tenant] = $this->resolveCrmApiContext($request);
 
         $data = $request->validate([
-            'status' => ['nullable', 'string', 'in:open,completed,cancelled,all'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', [...CrmTask::STATUSES, 'all'])],
             'kind' => ['nullable', 'string', 'in:all,tasks,reminders'],
         ]);
 
@@ -88,6 +88,7 @@ final class TaskController extends Controller
             'contact_name' => ['nullable', 'string', 'max:255'],
             'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
         ]);
 
         $create = [
@@ -99,6 +100,9 @@ final class TaskController extends Controller
         ];
         if ($request->exists('assignee_ids')) {
             $create['assignee_ids'] = $data['assignee_ids'] ?? [];
+        }
+        if ($request->exists('status')) {
+            $create['status'] = $data['status'] ?? CrmTask::STATUS_OPEN;
         }
 
         $task = $this->tasks->create($user, $tenant, $create);
@@ -135,6 +139,7 @@ final class TaskController extends Controller
             'contact_name' => ['nullable', 'string', 'max:255'],
             'assignee_ids' => ['nullable', 'array'],
             'assignee_ids.*' => ['integer'],
+            'status' => ['nullable', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
         ]);
 
         $payload = [
@@ -154,6 +159,9 @@ final class TaskController extends Controller
         if ($request->exists('assignee_ids')) {
             $payload['assignee_ids'] = $data['assignee_ids'] ?? [];
         }
+        if ($request->exists('status')) {
+            $payload['status'] = $data['status'] ?? CrmTask::STATUS_OPEN;
+        }
 
         $updated = $this->tasks->update($user, $task, $payload);
 
@@ -163,13 +171,27 @@ final class TaskController extends Controller
     }
 
     /**
-     * Complete a task
-     *
-     * Completing a reminder task also completes the reminder.
+     * Change a task status
      *
      * @bodyParam user_id int required Must match the authenticated user. Example: 1
      * @bodyParam taskId string required Task id. Example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+     * @bodyParam status string required `open`, `in_progress`, `completed`, or `cancelled`. Example: in_progress
      */
+    public function status(Request $request): JsonResponse
+    {
+        ['user' => $user] = $this->resolveCrmApiContext($request);
+        $task = $this->authorizedTask($request, $user);
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:'.implode(',', CrmTask::STATUSES)],
+        ]);
+
+        $updated = $this->tasks->setStatus($user, $task, $data['status']);
+
+        return ApiResponse::success([
+            'task' => $this->tasks->payload($updated),
+        ], 'Task status updated.');
+    }
+
     public function complete(Request $request): JsonResponse
     {
         ['user' => $user] = $this->resolveCrmApiContext($request);

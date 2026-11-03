@@ -108,6 +108,7 @@ const permissionLabels = {
 	'users.create': 'Create users',
 	'users.update': 'Edit users',
 	'users.delete': 'Delete users',
+	'users.impersonate': 'Log in as user',
 	'roles.view': 'View roles',
 	'roles.create': 'Create roles',
 	'roles.update': 'Edit roles',
@@ -129,6 +130,10 @@ const permissionLabels = {
 	'contacts.create': 'Create contacts',
 	'contacts.update': 'Edit contacts',
 	'contacts.delete': 'Delete contacts',
+	'tags.view': 'View tags',
+	'tags.create': 'Add tags',
+	'tags.update': 'Rename tags',
+	'tags.delete': 'Remove tags',
 	'short-urls.view': 'View short URLs',
 	'settings.view': 'View site settings',
 	'settings.update': 'Edit site settings',
@@ -152,7 +157,8 @@ const subModuleNavPermissionMap = {
 		'Call Logs': 'nav.crm.call-logs.show'
 	},
 	'Contact Management': {
-		Contacts: 'nav.contact-management.contacts.show'
+		Contacts: 'nav.contact-management.contacts.show',
+		Tags: 'nav.contact-management.tags.show'
 	},
 	'User Management': {
 		'Users': 'nav.user-management.users.show',
@@ -199,6 +205,7 @@ function toggle(name, checked) {
 		next.add(name);
 		// Enabling a nav toggle also grants the capabilities the page policies require.
 		const navCapabilityGrants = {
+			'nav.contact-management.tags.show': ['tags.view', 'tags.create', 'tags.update', 'tags.delete'],
 			'nav.user-management.tenants.show': ['tenants.view', 'tenants.update'],
 			'nav.settings.integrations.show': ['settings.view', 'settings.update', 'nav.settings.show'],
 			'nav.settings.data-configuration.show': ['settings.view', 'settings.update', 'nav.settings.show'],

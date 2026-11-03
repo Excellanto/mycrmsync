@@ -31,9 +31,9 @@
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Status</label>
 					<select v-model="localFilters.status" class="w-full rounded-lg border-gray-300 text-sm" @change="applyFilters">
-						<option value="open">Open</option>
-						<option value="completed">Completed</option>
-						<option value="cancelled">Cancelled</option>
+						<option v-for="option in statusOptions" :key="option.value" :value="option.value">
+							{{ option.label }}
+						</option>
 						<option value="all">All</option>
 					</select>
 				</div>
@@ -88,15 +88,15 @@
 								<select
 									v-if="canUpdate"
 									:value="task.status"
-									class="rounded-lg border-gray-300 text-sm capitalize"
+									class="rounded-lg border-gray-300 text-sm"
 									:disabled="busyId === task.id"
 									@change="changeStatus(task, $event.target.value)"
 								>
-									<option value="open">Open</option>
-									<option value="completed">Completed</option>
-									<option value="cancelled">Cancelled</option>
+									<option v-for="option in statusOptions" :key="option.value" :value="option.value">
+										{{ option.label }}
+									</option>
 								</select>
-								<span v-else class="capitalize text-gray-700">{{ task.status }}</span>
+								<span v-else class="text-gray-700">{{ statusLabel(task.status) }}</span>
 							</td>
 							<td class="px-4 py-3 text-right whitespace-nowrap">
 								<button
@@ -141,6 +141,14 @@
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Due</label>
 					<input v-model="form.due_at" type="datetime-local" class="w-full rounded-lg border-gray-300 text-sm" />
+				</div>
+				<div>
+					<label class="mb-1 block text-sm font-medium text-gray-700">Status</label>
+					<select v-model="form.status" class="w-full rounded-lg border-gray-300 text-sm">
+						<option v-for="option in statusOptions" :key="option.value" :value="option.value">
+							{{ option.label }}
+						</option>
+					</select>
 				</div>
 				<div>
 					<label class="mb-1 block text-sm font-medium text-gray-700">Assign to</label>
@@ -215,6 +223,17 @@ const props = defineProps({
 	users: { type: Array, default: () => [] },
 });
 
+const statusOptions = [
+	{ value: 'open', label: 'Open' },
+	{ value: 'in_progress', label: 'In progress' },
+	{ value: 'completed', label: 'Completed' },
+	{ value: 'cancelled', label: 'Cancelled' },
+];
+
+function statusLabel(status) {
+	return statusOptions.find((option) => option.value === status)?.label || status;
+}
+
 const localFilters = reactive({
 	status: props.filters.status || 'open',
 	kind: props.filters.kind || 'all',
@@ -243,6 +262,7 @@ const form = reactive({
 	title: '',
 	body: '',
 	due_at: '',
+	status: 'open',
 	contact_id: '',
 	contact_name: '',
 	assignee_ids: [],
@@ -270,7 +290,8 @@ function openCreate() {
 	editingId.value = null;
 	form.title = '';
 	form.body = '';
-	form.due_at = '';
+	form.due_at = toDatetimeLocal(new Date());
+	form.status = 'open';
 	form.contact_id = '';
 	form.contact_name = '';
 	form.assignee_ids = [];
@@ -286,6 +307,7 @@ function openEdit(task) {
 	form.title = task.title;
 	form.body = task.body || '';
 	form.due_at = toDatetimeLocal(task.due_at);
+	form.status = task.status || 'open';
 	form.contact_id = task.contact_id || '';
 	form.contact_name = task.contact_name || '';
 	form.assignee_ids = Array.isArray(task.assignee_ids) ? [...task.assignee_ids] : [];
@@ -351,6 +373,7 @@ async function saveTask() {
 		title: form.title.trim(),
 		body: form.body.trim(),
 		due_at: dueAt,
+		status: form.status || 'open',
 		contact_id: form.contact_id || null,
 		contact_name: form.contact_name || '',
 		assignee_ids: form.assignee_ids,

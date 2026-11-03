@@ -164,6 +164,28 @@
 				</Link>
 
 				<Link
+					v-if="showTagManagementNav"
+					:href="route('admin.tags.index')"
+					:class="navRowClass(isPathActive('/admin/tags'))"
+					:title="sidebarCollapsed ? 'Tag Management' : undefined"
+				>
+					<span
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+						:class="iconWrapClass(isPathActive('/admin/tags'))"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+							/>
+						</svg>
+					</span>
+					<span v-show="!sidebarCollapsed" class="truncate">Tag Management</span>
+				</Link>
+
+				<Link
 					v-if="showUrlManagementNav"
 					:href="route('admin.url-management.index')"
 					:class="navRowClass(isPathActive('/admin/url-management'))"
@@ -602,6 +624,25 @@
 					</div>
 				</div>
 			</header>
+			<div
+				v-if="impersonation.active"
+				class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"
+			>
+				<span>
+					Signed in as <strong>{{ user?.name }}</strong>
+					<template v-if="impersonation.impersonator_name">
+						· return to {{ impersonation.impersonator_name }}
+					</template>
+				</span>
+				<Link
+					href="/impersonation/leave"
+					method="post"
+					as="button"
+					class="rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800"
+				>
+					Return to your account
+				</Link>
+			</div>
 			<main class="w-full flex-1 min-h-0 overflow-auto p-6">
 				<slot />
 			</main>
@@ -644,6 +685,9 @@ const isApiManagementSectionActive = computed(
 
 const contactManagementAvailable = computed(
 	() => page.props.auth?.contact_management_available === true
+);
+const tagManagementAvailable = computed(
+	() => page.props.auth?.tag_management_available === true
 );
 
 const isUserMgmtSectionActive = computed(
@@ -692,6 +736,7 @@ const configurationsOpen = ref(false);
 const settingsOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user || null);
+const impersonation = computed(() => page.props.impersonation || { active: false, impersonator_name: null });
 const tenant = computed(() => user.value?.tenant || null);
 const tenantLogoUrl = computed(() => tenant.value?.company_logo_url || null);
 const tenantCompanyName = computed(() => tenant.value?.company_name || '');
@@ -830,6 +875,12 @@ const showContactManagementNav = computed(() => {
 	if (showAllMenus.value) return true;
 	if (canShowNav('nav.contact-management.show', 'contacts.view')) return true;
 	return canShowNav('nav.contact-management.contacts.show', 'contacts.view');
+});
+
+const showTagManagementNav = computed(() => {
+	if (!tagManagementAvailable.value) return false;
+	if (showAllMenus.value) return true;
+	return canShowNav('nav.contact-management.tags.show', 'tags.view');
 });
 
 const showUserMgmtModule = computed(

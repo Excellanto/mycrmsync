@@ -13,9 +13,19 @@ class CrmTask extends Model
 
     public const STATUS_OPEN = 'open';
 
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    /** @var list<string> */
+    public const STATUSES = [
+        self::STATUS_OPEN,
+        self::STATUS_IN_PROGRESS,
+        self::STATUS_COMPLETED,
+        self::STATUS_CANCELLED,
+    ];
 
     protected $fillable = [
         'tenant_id',

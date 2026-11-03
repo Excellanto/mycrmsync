@@ -38,7 +38,7 @@ final class CrmTaskService
         $this->restrictToVisibleTasks($query, $user);
 
         $status = (string) ($filters['status'] ?? 'open');
-        if (in_array($status, [CrmTask::STATUS_OPEN, CrmTask::STATUS_COMPLETED, CrmTask::STATUS_CANCELLED], true)) {
+        if (in_array($status, CrmTask::STATUSES, true)) {
             $query->where('status', $status);
         }
 
@@ -59,6 +59,7 @@ final class CrmTaskService
     {
         $this->assertContactWhenRequired($tenant, $data['contact_id'] ?? null);
 
+        $status = $this->taskStatus($data['status'] ?? null);
         $task = CrmTask::query()->create([
             'tenant_id' => $tenant->id,
             'user_id' => $user->id,
@@ -69,7 +70,10 @@ final class CrmTaskService
             'body' => $this->blankToNull($data['body'] ?? null),
             'due_at' => Carbon::parse($data['due_at']),
             'is_reminder' => false,
-            'status' => CrmTask::STATUS_OPEN,
+            'status' => $status,
+            'completed_at' => in_array($status, [CrmTask::STATUS_COMPLETED, CrmTask::STATUS_CANCELLED], true)
+                ? now()
+                : null,
         ]);
 
         $assigneeIds = array_key_exists('assignee_ids', $data)
@@ -112,18 +116,38 @@ final class CrmTaskService
             $this->syncAssignees($task, $tenant, (array) $data['assignee_ids']);
         }
 
+        $nextStatus = array_key_exists('status', $data) ? $this->taskStatus($data['status']) : null;
+        if ($nextStatus !== null && $nextStatus !== $task->status) {
+            return $this->setStatus($user, $task->fresh(), $nextStatus);
+        }
+
         $this->external->push($task->fresh(['user:id,name,intsysuser']));
 
         return $task->fresh(['user:id,name', 'assignees:id,name']);
+    }
+
+    private function taskStatus(mixed $status): string
+    {
+        $value = trim((string) $status);
+        if ($value === '') {
+            return CrmTask::STATUS_OPEN;
+        }
+        if (! in_array($value, CrmTask::STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'status' => ['Choose an open, in progress, completed, or cancelled status.'],
+            ]);
+        }
+
+        return $value;
     }
 
     public function setStatus(User $user, CrmTask $task, string $status): CrmTask
     {
         $this->assertCanManage($user, $task);
 
-        if (! in_array($status, [CrmTask::STATUS_OPEN, CrmTask::STATUS_COMPLETED, CrmTask::STATUS_CANCELLED], true)) {
+        if (! in_array($status, CrmTask::STATUSES, true)) {
             throw ValidationException::withMessages([
-                'status' => ['Choose an open, completed, or cancelled status.'],
+                'status' => ['Choose an open, in progress, completed, or cancelled status.'],
             ]);
         }
 
@@ -143,6 +167,12 @@ final class CrmTaskService
                 'status' => CrmTask::STATUS_CANCELLED,
                 'completed_at' => $task->completed_at ?? now(),
             ]);
+        } elseif ($status === CrmTask::STATUS_IN_PROGRESS) {
+            $this->syncReminderStatus($task, ContactReminder::STATUS_PENDING);
+            $task->update([
+                'status' => CrmTask::STATUS_IN_PROGRESS,
+                'completed_at' => null,
+            ]);
         } else {
             $this->syncReminderStatus($task, ContactReminder::STATUS_PENDING);
             $task->update([
@@ -161,7 +191,7 @@ final class CrmTaskService
     {
         $this->assertCanManage($user, $task);
 
-        if ($task->status !== CrmTask::STATUS_OPEN) {
+        if (! in_array($task->status, [CrmTask::STATUS_OPEN, CrmTask::STATUS_IN_PROGRESS], true)) {
             throw ValidationException::withMessages([
                 'task' => ['This task is already closed.'],
             ]);

@@ -111,6 +111,35 @@ final class ZohoCrmApiClient
         return [['tags' => $tags, 'meta' => $this->metaFromZohoInfo($json)], $response->status()];
     }
 
+    public function createLocationTag(Tenant $tenant, string $name): void
+    {
+        $response = $this->request($tenant, 'POST', '/settings/tags', ['module' => 'Contacts'], [
+            'tags' => [[
+                'name' => $name,
+                'color_code' => '#57B1FD',
+            ]],
+        ]);
+        $this->assertTagWriteSucceeded($this->successfulJson($response), 'Could not create the Zoho tag.');
+    }
+
+    public function updateLocationTag(Tenant $tenant, string $tagId, string $name): void
+    {
+        $response = $this->request($tenant, 'PUT', '/settings/tags/'.rawurlencode($tagId), ['module' => 'Contacts'], [
+            'tags' => [[
+                'name' => $name,
+            ]],
+        ]);
+        $this->assertTagWriteSucceeded($this->successfulJson($response), 'Could not rename the Zoho tag.');
+    }
+
+    public function deleteLocationTag(Tenant $tenant, string $tagId): void
+    {
+        $response = $this->request($tenant, 'DELETE', '/settings/tags/'.rawurlencode($tagId), [
+            'module' => 'Contacts',
+        ]);
+        $this->assertTagWriteSucceeded($this->successfulJson($response), 'Could not remove the Zoho tag.');
+    }
+
     /**
      * @param  array<string, mixed>  $body
      * @return array{0: array{success: bool, status: bool, contact: array<string, mixed>}, 1: int}
@@ -559,6 +588,28 @@ final class ZohoCrmApiClient
             'notes' => $notes,
             'meta' => $this->metaFromZohoInfo($json),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    private function assertTagWriteSucceeded(array $json, string $fallback): void
+    {
+        $row = data_get($json, 'tags.0', data_get($json, 'data.0'));
+
+        if (! is_array($row)) {
+            return;
+        }
+
+        $status = strtoupper(trim((string) (data_get($row, 'status') ?: data_get($row, 'code') ?: 'SUCCESS')));
+
+        if ($status === 'SUCCESS') {
+            return;
+        }
+
+        $message = trim((string) data_get($row, 'message', ''));
+
+        throw new RuntimeException($message !== '' ? $message : $fallback, 422);
     }
 
     /**

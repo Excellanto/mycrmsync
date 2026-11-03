@@ -87,6 +87,7 @@ class RoleController extends Controller
         // Contact Management (MyCrmSync)
         $contactMgmtSubs = [
             'Contacts' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'contacts.') || $p->name === 'nav.contact-management.contacts.show')->sortBy('name')->values(),
+            'Tags' => $permissions->filter(fn ($p) => str_starts_with($p->name, 'tags.') || $p->name === 'nav.contact-management.tags.show')->sortBy('name')->values(),
         ];
         $contactMgmtSubs = array_filter($contactMgmtSubs, fn ($arr) => $arr->isNotEmpty());
         foreach ($contactMgmtSubs as $subs) {

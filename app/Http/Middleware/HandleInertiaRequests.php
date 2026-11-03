@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Support\ApplicationCache;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -36,6 +37,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => fn () => $this->authBundle($request)['user'],
                 'permissions' => fn () => $this->authBundle($request)['permissions'],
                 'contact_management_available' => fn () => $this->authBundle($request)['contact_management_available'],
+                'tag_management_available' => fn () => $this->authBundle($request)['tag_management_available'],
                 'can' => fn () => $this->authBundle($request)['can'],
             ],
             'crm' => [
@@ -53,6 +55,27 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'impersonation' => fn () => $this->impersonationShare($request),
+        ];
+    }
+
+    /**
+     * @return array{active: bool, impersonator_name: string|null}
+     */
+    private function impersonationShare(Request $request): array
+    {
+        $impersonatorId = $request->session()->get('impersonator_id');
+
+        if (! is_numeric($impersonatorId)) {
+            return [
+                'active' => false,
+                'impersonator_name' => null,
+            ];
+        }
+
+        return [
+            'active' => true,
+            'impersonator_name' => User::query()->whereKey((int) $impersonatorId)->value('name'),
         ];
     }
 
@@ -61,7 +84,8 @@ class HandleInertiaRequests extends Middleware
      *     user: array<string, mixed>|null,
      *     permissions: list<string>,
      *     can: array<string, mixed>,
-     *     contact_management_available: bool
+     *     contact_management_available: bool,
+     *     tag_management_available: bool
      * }
      */
     private function authBundle(Request $request): array

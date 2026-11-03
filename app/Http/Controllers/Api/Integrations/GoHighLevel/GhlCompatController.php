@@ -46,6 +46,7 @@ final class GhlCompatController extends Controller
      *
      * @queryParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
      * @queryParam limit int Optional. Page size 1–100.
+     * @queryParam assigned_to int Optional. **MyCrmSync:** local user id. Returns only contacts assigned to that user. `assignedTo` is accepted as an alias. Example: 42
      * @queryParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: activity
      * @queryParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc` (defaults: `asc` for name, `desc` otherwise). Example: desc
      * @queryParam fields string Optional. **Zoho only:** comma-separated Zoho Contacts API field names (max 50). Defaults to fields required for MysimConnect’s normalized contact shape. Example: First_Name,Last_Name,Email
@@ -65,6 +66,8 @@ final class GhlCompatController extends Controller
         ]);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            $this->assertMyCrmSyncAssignee($request, $tenant);
+
             return $this->proxyContacts(fn () => $this->myCrmSync->listContacts(
                 $tenant,
                 $this->queryWithoutLocalContext($request, $tenant)
@@ -90,6 +93,7 @@ final class GhlCompatController extends Controller
      * @bodyParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
      * @bodyParam query string Optional. Example: jane@example.com
      * @bodyParam pageLimit int Optional. Example: 20
+     * @bodyParam assigned_to int Optional. **MyCrmSync:** local user id. Returns only contacts assigned to that user. `assignedTo` is accepted as an alias. Example: 42
      * @bodyParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: name
      * @bodyParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc`. Example: asc
      * @bodyParam fields string Optional. **Zoho only:** comma-separated Contacts field API names forwarded to `/Contacts/search`. Example: First_Name,Last_Name,Email
@@ -110,6 +114,8 @@ final class GhlCompatController extends Controller
         ]);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            $this->assertMyCrmSyncAssignee($request, $tenant);
+
             return $this->proxyContacts(fn () => $this->myCrmSync->searchContacts(
                 $tenant,
                 $this->bodyWithoutLocalContext($request, $tenant)
@@ -938,6 +944,43 @@ final class GhlCompatController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * MyCrmSync list and search accept a local user id and return only that user's contacts.
+     */
+    private function assertMyCrmSyncAssignee(Request $request, Tenant $tenant): void
+    {
+        $data = $request->validate([
+            'assigned_to' => ['nullable', 'integer', 'min:1'],
+            'assignedTo' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $assignedTo = $data['assigned_to'] ?? null;
+        $assignedToAlias = $data['assignedTo'] ?? null;
+
+        if ($assignedTo !== null && $assignedToAlias !== null && (int) $assignedTo !== (int) $assignedToAlias) {
+            throw ValidationException::withMessages([
+                'assigned_to' => ['assigned_to and assignedTo must be the same user.'],
+            ]);
+        }
+
+        $assigneeId = (int) ($assignedTo ?? $assignedToAlias ?? 0);
+
+        if ($assigneeId <= 0) {
+            return;
+        }
+
+        $belongsToTenant = User::query()
+            ->whereKey($assigneeId)
+            ->where('tenant_id', $tenant->id)
+            ->exists();
+
+        if (! $belongsToTenant) {
+            throw ValidationException::withMessages([
+                'assigned_to' => ['The selected user does not belong to this company.'],
+            ]);
+        }
     }
 
     /**

@@ -26,6 +26,7 @@ class TenantObserver
 
         ApplicationCache::forgetAuthForTenantUsers((int) $tenant->id);
         ApplicationCache::forgetPlatformHasMyCrmSyncTenant();
+        ApplicationCache::forgetPlatformHasSupportedCrmTenant();
 
         if ($tenant->wasChanged(['integration', 'integration_status'])) {
             ApplicationCache::forgetDashboardForTenant((int) $tenant->id);

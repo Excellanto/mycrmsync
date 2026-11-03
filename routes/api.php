@@ -72,6 +72,7 @@ Route::prefix('crm')
         Route::get('/tasks', [CrmTaskController::class, 'index'])->name('api.crm.tasks.index');
         Route::post('/tasks/add', [CrmTaskController::class, 'store'])->name('api.crm.tasks.store');
         Route::post('/tasks/update', [CrmTaskController::class, 'update'])->name('api.crm.tasks.update');
+        Route::post('/tasks/status', [CrmTaskController::class, 'status'])->name('api.crm.tasks.status');
         Route::post('/tasks/complete', [CrmTaskController::class, 'complete'])->name('api.crm.tasks.complete');
 
         Route::get('/reminders', [ContactReminderController::class, 'index'])->name('api.crm.reminders.index');

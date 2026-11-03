@@ -6,7 +6,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 final class ContactImportService
 {
@@ -29,6 +31,8 @@ final class ContactImportService
         'address' => ['address', 'street', 'street address'],
         'postal_code' => ['postal_code', 'postal code', 'zip', 'zip code', 'postcode', 'pincode', 'pin code'],
         'website' => ['website', 'url', 'web'],
+        'notes' => ['notes', 'note', 'remarks', 'remark', 'comments', 'comment'],
+        'assigned_to_email' => ['assigned to', 'assign to', 'assigned email', 'assigned to email', 'assignee', 'assignee email', 'assign to email', 'owner email'],
     ];
 
     /**
@@ -45,7 +49,7 @@ final class ContactImportService
         }
 
         try {
-            $spreadsheet = IOFactory::load($file->getRealPath());
+            $spreadsheet = $this->loadSpreadsheet($file->getRealPath(), $extension);
         } catch (ReaderException $e) {
             throw ValidationException::withMessages([
                 'file' => ['Could not read the file. Check that it is a valid CSV or Excel document.'],
@@ -81,6 +85,38 @@ final class ContactImportService
         }
 
         return $rows;
+    }
+
+    private function loadSpreadsheet(string $path, string $extension): Spreadsheet
+    {
+        if (in_array($extension, ['csv', 'txt'], true)) {
+            $reader = new Csv();
+            $reader->setDelimiter($this->detectCsvDelimiter($path));
+
+            return $reader->load($path);
+        }
+
+        return IOFactory::load($path);
+    }
+
+    /**
+     * Prefer comma or semicolon from the header. Automatic detection treats
+     * spaces inside notes as the column separator.
+     */
+    private function detectCsvDelimiter(string $path): string
+    {
+        $handle = fopen($path, 'rb');
+        $line = $handle ? (string) fgets($handle) : '';
+
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+
+        $line = preg_replace('/^\xEF\xBB\xBF/', '', $line) ?? $line;
+        $commas = substr_count($line, ',');
+        $semicolons = substr_count($line, ';');
+
+        return $semicolons > $commas ? ';' : ',';
     }
 
     /**
@@ -147,9 +183,15 @@ final class ContactImportService
         $phone2 = trim((string) ($data['phone_2'] ?? ''));
         $firstName = trim((string) ($data['first_name'] ?? ''));
         $lastName = trim((string) ($data['last_name'] ?? ''));
+        $assignedToEmail = trim((string) ($data['assigned_to_email'] ?? ''));
+        $notes = trim((string) ($data['notes'] ?? ''));
 
         if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $warnings[] = 'Invalid email format.';
+        }
+
+        if ($assignedToEmail !== '' && ! filter_var($assignedToEmail, FILTER_VALIDATE_EMAIL)) {
+            $warnings[] = 'Assigned To must be a user email.';
         }
 
         if ($email === '' && $phone === '' && $phone2 === '' && $firstName === '' && $lastName === '') {
@@ -178,6 +220,8 @@ final class ContactImportService
             'postal_code' => trim((string) ($data['postal_code'] ?? '')),
             'website' => trim((string) ($data['website'] ?? '')),
             'tags' => $data['tags'] ?? [],
+            'notes' => $notes,
+            'assigned_to_email' => $assignedToEmail,
             'name' => $displayName,
             'warnings' => $warnings,
             'importable' => $warnings === [],

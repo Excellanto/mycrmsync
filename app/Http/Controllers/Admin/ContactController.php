@@ -131,9 +131,11 @@ class ContactController extends Controller
             'contacts.*.website' => ['nullable', 'string', 'max:255'],
             'contacts.*.tags' => ['nullable', 'array'],
             'contacts.*.tags.*' => ['string', 'max:255'],
+            'contacts.*.notes' => ['nullable', 'string', 'max:10000'],
+            'contacts.*.assigned_to_email' => ['nullable', 'string', 'email', 'max:255'],
         ]);
 
-        $result = $this->contacts->importMany($tenantId, $data['contacts']);
+        $result = $this->contacts->importMany($tenantId, $data['contacts'], $user);
 
         return response()->json([
             'success' => true,

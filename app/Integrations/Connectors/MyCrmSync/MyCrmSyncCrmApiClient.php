@@ -23,8 +23,9 @@ final class MyCrmSyncCrmApiClient
     public function listContacts(Tenant $tenant, array $query = []): array
     {
         $limit = min(max((int) ($query['limit'] ?? 20), 1), 100);
-        $collection = $this->contacts->searchForTenant($tenant, array_merge($query, ['limit' => $limit]));
-        $total = $this->contacts->countForTenant($tenant->id);
+        $params = array_merge($query, ['limit' => $limit]);
+        $collection = $this->contacts->searchForTenant($tenant, $params);
+        $total = $this->contacts->countForTenant($tenant->id, $this->contacts->apiListingFilters($params));
 
         return [$this->mapper->contactsEnvelope($collection, $total, $limit), 200];
     }
@@ -36,13 +37,7 @@ final class MyCrmSyncCrmApiClient
     public function searchContacts(Tenant $tenant, array $body = []): array
     {
         $collection = $this->contacts->searchForTenant($tenant, $body);
-        $filters = [];
-
-        if (trim((string) ($body['query'] ?? '')) !== '') {
-            $filters['search'] = trim((string) $body['query']);
-        }
-
-        $total = $this->contacts->countForTenant($tenant->id, $filters);
+        $total = $this->contacts->countForTenant($tenant->id, $this->contacts->apiListingFilters($body));
         $limit = min(max((int) ($body['pageLimit'] ?? $body['limit'] ?? 20), 1), 100);
 
         return [$this->mapper->contactsEnvelope($collection, $total, $limit), 200];

@@ -60,6 +60,24 @@ class UserPolicy
 		// Tenant users can only delete users in their tenant
 		return $model->tenant_id === $user->tenant_id;
 	}
+
+	public function impersonate(User $user, User $model): bool
+	{
+		if ($user->id === $model->id || $model->isMaster()) {
+			return false;
+		}
+
+		if (! $user->can('users.impersonate')) {
+			return false;
+		}
+
+		if ($user->isMaster()) {
+			return true;
+		}
+
+		return $model->tenant_id !== null
+			&& (int) $model->tenant_id === (int) $user->tenant_id;
+	}
 }
 
 

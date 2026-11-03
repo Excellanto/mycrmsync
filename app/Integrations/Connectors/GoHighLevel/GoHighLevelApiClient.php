@@ -237,6 +237,33 @@ final class GoHighLevelApiClient
         ], $response->status()];
     }
 
+    public function createLocationTag(Tenant $tenant, string $name): void
+    {
+        $locationId = rawurlencode($this->defaultLocationId($tenant));
+        $response = $this->request($tenant, 'POST', "/locations/{$locationId}/tags", json: [
+            'name' => $name,
+        ]);
+        $this->successfulJson($response);
+    }
+
+    public function updateLocationTag(Tenant $tenant, string $tagId, string $name): void
+    {
+        $locationId = rawurlencode($this->defaultLocationId($tenant));
+        $tagId = rawurlencode($tagId);
+        $response = $this->request($tenant, 'PUT', "/locations/{$locationId}/tags/{$tagId}", json: [
+            'name' => $name,
+        ]);
+        $this->successfulJson($response);
+    }
+
+    public function deleteLocationTag(Tenant $tenant, string $tagId): void
+    {
+        $locationId = rawurlencode($this->defaultLocationId($tenant));
+        $tagId = rawurlencode($tagId);
+        $response = $this->request($tenant, 'DELETE', "/locations/{$locationId}/tags/{$tagId}");
+        $this->successfulJson($response);
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      */

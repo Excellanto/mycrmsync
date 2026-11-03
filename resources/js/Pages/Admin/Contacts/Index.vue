@@ -132,6 +132,12 @@
 					</template>
 				</PColumn>
 
+				<PColumn header="Company" style="width: 200px">
+					<template #body="{ data }">
+						<span class="text-sm">{{ data.companyName || '—' }}</span>
+					</template>
+				</PColumn>
+
 				<PColumn header="Email" style="width: 200px">
 					<template #body="{ data }">
 						<span class="text-sm">{{ data.email || '—' }}</span>
@@ -156,12 +162,6 @@
 					</template>
 				</PColumn>
 
-				<PColumn header="Company" style="width: 160px">
-					<template #body="{ data }">
-						<span class="text-sm">{{ data.companyName || '—' }}</span>
-					</template>
-				</PColumn>
-
 				<PColumn header="Assigned to" style="width: 140px">
 					<template #body="{ data }">
 						<span class="text-sm">{{ assignedUserName(data.assignedTo) }}</span>
@@ -183,9 +183,9 @@
 					</template>
 				</PColumn>
 
-				<PColumn header="Added" style="width: 160px">
+				<PColumn header="Added" style="width: 210px">
 					<template #body="{ data }">
-						<span class="text-sm">{{ formatDate(data.dateAdded) }}</span>
+						<span class="text-sm whitespace-nowrap">{{ formatAddedDate(data.dateAdded) }}</span>
 					</template>
 				</PColumn>
 
@@ -378,6 +378,8 @@
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Phone 2</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Company</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Tags</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Assigned to</th>
+									<th class="px-3 py-2 text-left font-medium text-gray-700">Notes</th>
 									<th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
 								</tr>
 							</thead>
@@ -412,6 +414,10 @@
 											</span>
 											<span v-if="!(row.tags || []).length" class="text-gray-400">—</span>
 										</div>
+									</td>
+									<td class="px-3 py-2 align-top">{{ row.assigned_to_email || '—' }}</td>
+									<td class="max-w-xs px-3 py-2 align-top">
+										<span class="line-clamp-2">{{ row.notes || '—' }}</span>
 									</td>
 									<td class="px-3 py-2 align-top">
 										<span v-if="row.importable" class="text-green-700">Ready</span>
@@ -706,6 +712,22 @@ function formatDate(value) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 	return date.toLocaleString();
+}
+
+function formatAddedDate(value) {
+	if (!value) return '—';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+
+	const day = date.getDate();
+	const suffix = day % 100 >= 11 && day % 100 <= 13
+		? 'th'
+		: { 1: 'st', 2: 'nd', 3: 'rd' }[day % 10] || 'th';
+	const month = date.toLocaleString('en-GB', { month: 'long' });
+	const hours = String(date.getHours()).padStart(2, '0');
+	const minutes = String(date.getMinutes()).padStart(2, '0');
+
+	return `${day}${suffix} ${month} ${date.getFullYear()} ${hours}:${minutes}`;
 }
 
 function toDatetimeLocal(value) {
@@ -1126,6 +1148,8 @@ async function submitImport() {
 			postal_code: row.postal_code || '',
 			website: row.website || '',
 			tags: row.tags || [],
+			notes: row.notes || '',
+			assigned_to_email: row.assigned_to_email || '',
 		}));
 
 	importSubmitting.value = true;

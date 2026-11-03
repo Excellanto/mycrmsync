@@ -181,7 +181,11 @@ final class CrmTaskExternalSync
             'Subject' => $task->title,
             'Description' => (string) ($task->body ?? ''),
             'Due_Date' => $task->due_at?->toDateString(),
-            'Status' => $task->status === CrmTask::STATUS_COMPLETED ? 'Completed' : 'Not Started',
+            'Status' => match ($task->status) {
+                CrmTask::STATUS_COMPLETED => 'Completed',
+                CrmTask::STATUS_IN_PROGRESS => 'In Progress',
+                default => 'Not Started',
+            },
         ];
 
         if ($withRemindAt && $task->due_at !== null) {

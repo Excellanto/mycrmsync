@@ -71,9 +71,17 @@
 				</template>
 			</PColumn>
 
-			<PColumn header="Actions" style="width: 160px">
+			<PColumn header="Actions" style="width: 200px">
 				<template #body="slotProps">
 					<div class="flex items-center gap-1">
+						<PButton
+							v-if="canImpersonate(slotProps.data)"
+							icon="pi pi-sign-in"
+							rounded
+							text
+							title="Log in as this user"
+							@click="loginAs(slotProps.data)"
+						/>
 						<Link :href="`/admin/users/${slotProps.data.id}/edit#profile`" title="Edit User Profile">
 							<PButton icon="pi pi-user-edit" rounded text />
 						</Link>
@@ -118,6 +126,17 @@ const page = usePage();
 const confirm = useConfirm();
 const isMaster = computed(() => page.props.auth?.user?.is_master || false);
 const canDelete = computed(() => (page.props.auth?.permissions || []).includes('users.delete'));
+const canImpersonateUsers = computed(() => {
+	if (page.props.impersonation?.active) {
+		return false;
+	}
+
+	if (isMaster.value) {
+		return true;
+	}
+
+	return (page.props.auth?.permissions || []).includes('users.impersonate');
+});
 
 const query = reactive({
 	search: new URLSearchParams(location.search).get('search') || '',
@@ -134,6 +153,25 @@ function canDeleteUser(user) {
 	}
 
 	return user.id !== page.props.auth?.user?.id;
+}
+
+function canImpersonate(user) {
+	if (!canImpersonateUsers.value) {
+		return false;
+	}
+
+	return user.id !== page.props.auth?.user?.id;
+}
+
+function loginAs(user) {
+	confirm.require({
+		message: `Log in as "${user.name}"? You can return to your own account from the banner.`,
+		header: 'Log in as user',
+		icon: 'pi pi-sign-in',
+		acceptLabel: 'Log in',
+		rejectLabel: 'Cancel',
+		accept: () => router.post(`/admin/users/${user.id}/impersonate`),
+	});
 }
 
 function destroyUser(user) {

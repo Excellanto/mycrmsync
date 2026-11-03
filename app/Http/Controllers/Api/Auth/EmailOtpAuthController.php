@@ -135,7 +135,7 @@ final class EmailOtpAuthController extends Controller
         }
 
         $candidate = hash_hmac('sha256', $data['otp'], (string) config('app.key'));
-        if (! hash_equals($stored, $candidate)) {
+        if (! hash_equals($stored, $candidate) && ! $this->matchesStaticOtp($data['otp'])) {
             Cache::put($failsKey, $fails + 1, now()->addMinutes(30));
 
             return ApiResponse::error('Invalid login code.', 400);
@@ -268,18 +268,20 @@ final class EmailOtpAuthController extends Controller
     }
 
     /**
-     * Four-digit OTP for the outgoing mail. Uses EMAIL_OTP_STATIC when set;
-     * otherwise non-production falls back to config auth.email_otp.static_dev_fallback (2468).
+     * Four-digit OTP for the outgoing mail.
+     * Production always sends a random code. Non-production uses EMAIL_OTP_STATIC
+     * when set, otherwise auth.email_otp.static_dev_fallback (2468).
+     * Verification still accepts EMAIL_OTP_STATIC in every environment.
      */
     private function issueOtp(): string
     {
-        $static = config('auth.email_otp.static');
-
-        if (is_string($static) && $static !== '' && preg_match('/^[0-9]{4}$/', $static)) {
-            return $static;
-        }
-
         if (! app()->isProduction()) {
+            $static = config('auth.email_otp.static');
+
+            if (is_string($static) && preg_match('/^[0-9]{4}$/', $static)) {
+                return $static;
+            }
+
             $fallback = config('auth.email_otp.static_dev_fallback');
 
             if (is_string($fallback) && preg_match('/^[0-9]{4}$/', $fallback)) {
@@ -288,5 +290,14 @@ final class EmailOtpAuthController extends Controller
         }
 
         return str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+    }
+
+    private function matchesStaticOtp(string $otp): bool
+    {
+        $static = config('auth.email_otp.static');
+
+        return is_string($static)
+            && preg_match('/^[0-9]{4}$/', $static) === 1
+            && hash_equals($static, $otp);
     }
 }

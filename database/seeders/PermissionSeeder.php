@@ -19,6 +19,7 @@ class PermissionSeeder extends Seeder
             'users.create',
             'users.update',
             'users.delete',
+            'users.impersonate',
             // Roles
             'roles.view',
             'roles.create',
@@ -59,6 +60,11 @@ class PermissionSeeder extends Seeder
             'contacts.delete',
             'nav.contact-management.show',
             'nav.contact-management.contacts.show',
+            'nav.contact-management.tags.show',
+            'tags.view',
+            'tags.create',
+            'tags.update',
+            'tags.delete',
             // Tenants (platform companies)
             'tenants.view',
             'tenants.update',
