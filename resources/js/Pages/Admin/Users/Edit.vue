@@ -32,7 +32,7 @@
 					</ul>
 				</div>
 
-				<div id="integrated-system-user">
+				<div v-if="show_integrated_user" id="integrated-system-user">
 					<label class="mb-1 block text-sm font-medium text-gray-700"
 						>Integrated System User <span class="text-red-600">*</span></label
 					>
@@ -95,6 +95,10 @@ const props = defineProps({
 	role_assignment_rules: {
 		type: Array,
 		default: () => []
+	},
+	show_integrated_user: {
+		type: Boolean,
+		default: true
 	}
 });
 
@@ -107,7 +111,7 @@ const integrationLoadError = ref('');
 async function refreshUnmappedIntegrationUsers() {
 	integrationLoadError.value = '';
 	const tid = tenantIdForPicker.value;
-	if (!tid) {
+	if (!tid || !props.show_integrated_user) {
 		unmappedOptionsRef.value = [];
 		return;
 	}
@@ -161,7 +165,7 @@ const errors = reactive({
 function submit() {
 	errors.intsysuser = '';
 
-	if (tenantIdForPicker.value && mergedIntegratedUsers.value.length && !form.intsysuser) {
+	if (props.show_integrated_user && tenantIdForPicker.value && mergedIntegratedUsers.value.length && !form.intsysuser) {
 		errors.intsysuser = 'Integrated system user is required.';
 		return;
 	}
@@ -171,7 +175,7 @@ function submit() {
 		email: form.email,
 		password: form.password,
 		password_confirmation: form.password_confirmation,
-		intsysuser: form.intsysuser ? form.intsysuser : null,
+		intsysuser: props.show_integrated_user && form.intsysuser ? form.intsysuser : null,
 		roles: form.role ? [form.role] : [],
 		permissions: []
 	};

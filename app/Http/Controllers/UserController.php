@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
+use App\Integrations\CrmApiClientResolver;
 use App\Integrations\FetchTenantIntegrationCrmUsers;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -29,12 +30,16 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         $actor = auth()->user();
+        $showIntegratedUser = $this->showsIntegratedUserMapping($actor->tenant_id);
 
         return Inertia::render('Admin/Users/Create', [
             'roles' => $this->assignableRolesForForm($actor),
             'role_assignment_rules' => RoleAssignmentRules::descriptionsFor($actor),
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
-            'integrated_system_users' => $this->integrationUnmappedUsersForFrontend($actor->tenant_id, null),
+            'integrated_system_users' => $showIntegratedUser
+                ? $this->integrationUnmappedUsersForFrontend($actor->tenant_id, null)
+                : [],
+            'show_integrated_user' => $showIntegratedUser,
         ]);
     }
 
@@ -43,6 +48,7 @@ class UserController extends Controller
         $this->authorize('update', $user);
         $actor = auth()->user();
         $user->load(['roles', 'permissions']);
+        $showIntegratedUser = $this->showsIntegratedUserMapping($user->tenant_id);
 
         return Inertia::render('Admin/Users/Edit', [
             'user' => [
@@ -52,12 +58,15 @@ class UserController extends Controller
                 'email' => $user->email,
                 'roles' => $user->roles->pluck('name'),
                 'permissions' => $user->permissions->pluck('name'),
-                'intsysuser' => $user->intsysuser,
+                'intsysuser' => $showIntegratedUser ? $user->intsysuser : null,
             ],
             'roles' => $this->assignableRolesForForm($actor),
             'role_assignment_rules' => RoleAssignmentRules::descriptionsFor($actor),
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
-            'integrated_system_users' => $this->integrationUnmappedUsersForFrontend($user->tenant_id, $user->id),
+            'integrated_system_users' => $showIntegratedUser
+                ? $this->integrationUnmappedUsersForFrontend($user->tenant_id, $user->id)
+                : [],
+            'show_integrated_user' => $showIntegratedUser,
         ]);
     }
 
@@ -96,9 +105,14 @@ class UserController extends Controller
             $tenants = \App\Models\Tenant::select('id', 'company_name')->orderBy('company_name')->get();
         }
 
+        $mappedUserTenantId = ! $isMaster
+            ? $user->tenant_id
+            : ($request->filled('tenant_id') ? (int) $request->query('tenant_id') : null);
+
         return Inertia::render('Admin/Users/Index', [
             'users' => UserResource::collection($users),
             'tenants' => $tenants,
+            'show_mapped_user' => $this->showsIntegratedUserMapping($mappedUserTenantId),
         ]);
     }
 
@@ -153,10 +167,15 @@ class UserController extends Controller
             $rules['roles'] = ['array'];
         }
 
-        $allowedIntegratedIds = $this->integrationExternalUserIdsAllowed($resolvedTenantIdForRules, null, null);
-        $rules['intsysuser'] = $allowedIntegratedIds !== []
-            ? ['required', 'string', 'max:191', Rule::in($allowedIntegratedIds)]
-            : ['nullable', 'string', 'max:191'];
+        $isMyCrmSyncTenant = ! $this->showsIntegratedUserMapping($resolvedTenantIdForRules);
+        if ($isMyCrmSyncTenant) {
+            $rules['intsysuser'] = ['nullable', 'string', 'max:191'];
+        } else {
+            $allowedIntegratedIds = $this->integrationExternalUserIdsAllowed($resolvedTenantIdForRules, null, null);
+            $rules['intsysuser'] = $allowedIntegratedIds !== []
+                ? ['required', 'string', 'max:191', Rule::in($allowedIntegratedIds)]
+                : ['nullable', 'string', 'max:191'];
+        }
 
         $data = $request->validate($rules);
 
@@ -185,7 +204,7 @@ class UserController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'tenant_id' => $resolvedTenantId,
-            'intsysuser' => $data['intsysuser'] ?? null,
+            'intsysuser' => $isMyCrmSyncTenant ? null : ($data['intsysuser'] ?? null),
         ]);
 
         if ($creatingWithTenantContext) {
@@ -208,14 +227,19 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
-        $allowedIntegratedIds = $this->integrationExternalUserIdsAllowed(
-            $user->tenant_id,
-            $user->id,
-            filled((string) ($user->intsysuser ?? '')) ? (string) $user->intsysuser : null
-        );
-        $intsysRules = $allowedIntegratedIds !== []
-            ? ['required', 'string', 'max:191', Rule::in($allowedIntegratedIds)]
-            : ['nullable', 'string', 'max:191'];
+        $isMyCrmSyncTenant = ! $this->showsIntegratedUserMapping($user->tenant_id);
+        if ($isMyCrmSyncTenant) {
+            $intsysRules = ['nullable', 'string', 'max:191'];
+        } else {
+            $allowedIntegratedIds = $this->integrationExternalUserIdsAllowed(
+                $user->tenant_id,
+                $user->id,
+                filled((string) ($user->intsysuser ?? '')) ? (string) $user->intsysuser : null
+            );
+            $intsysRules = $allowedIntegratedIds !== []
+                ? ['required', 'string', 'max:191', Rule::in($allowedIntegratedIds)]
+                : ['nullable', 'string', 'max:191'];
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:255'],
@@ -228,7 +252,9 @@ class UserController extends Controller
 
         $user->name = $data['name'];
         $user->email = $data['email'];
-        if (array_key_exists('intsysuser', $data)) {
+        if ($isMyCrmSyncTenant) {
+            $user->intsysuser = null;
+        } elseif (array_key_exists('intsysuser', $data)) {
             $user->intsysuser = $data['intsysuser'];
         }
         if (! empty($data['password'])) {
@@ -319,6 +345,13 @@ class UserController extends Controller
             $this->authorize('view', $tenant);
         } elseif ((int) $actor->tenant_id !== (int) $tenant->id) {
             abort(403);
+        }
+
+        if (! $this->showsIntegratedUserMapping($tenant->id)) {
+            return response()->json([
+                'users' => [],
+                'unmapped_options' => [],
+            ]);
         }
 
         $excludeUserMappedByUserId = null;
@@ -464,6 +497,21 @@ class UserController extends Controller
      *
      * @return list<string>
      */
+    private function showsIntegratedUserMapping(int|string|null $tenantId): bool
+    {
+        if ($tenantId === null || $tenantId === '') {
+            return true;
+        }
+
+        $tenant = Tenant::query()->select(['id', 'integration'])->find((int) $tenantId);
+
+        if ($tenant === null) {
+            return true;
+        }
+
+        return ! CrmApiClientResolver::isMyCrmSyncTenant($tenant);
+    }
+
     private function integrationExternalUserIdsAllowed(?int $tenantId, ?int $excludeUserMappedByUserId, ?string $alsoAllowIntegratedId): array
     {
         $ids = collect($this->integrationUnmappedUsersForFrontend($tenantId, $excludeUserMappedByUserId))
@@ -483,6 +531,12 @@ class UserController extends Controller
 
         foreach (collect($paginator->items())->pluck('tenant_id')->unique()->filter()->all() as $tid) {
             $tenant = Tenant::query()->find($tid);
+            if ($tenant !== null && ! $this->showsIntegratedUserMapping($tenant->id)) {
+                $tenantMaps[$tid] = null;
+
+                continue;
+            }
+
             $tenantMaps[$tid] = $tenant
                 ? collect($this->fetchIntegrationUsers->mappedUsersOrEmpty($tenant))->keyBy(fn (array $u): string => (string) $u['id'])
                 : collect();
@@ -493,8 +547,10 @@ class UserController extends Controller
             $raw = $model->getAttribute('intsysuser');
             if (filled((string) $raw)) {
                 $key = (string) $raw;
-                if ($model->tenant_id) {
-                    $map = $tenantMaps[$model->tenant_id] ?? collect();
+                $map = $model->tenant_id ? ($tenantMaps[$model->tenant_id] ?? collect()) : null;
+                if ($map === null && $model->tenant_id) {
+                    $display = '—';
+                } elseif ($model->tenant_id && $map !== null) {
                     $row = $map->get($key);
                     $labelParts = array_filter([(string) ($row['name'] ?? ''), (string) ($row['email'] ?? '')]);
                     $display = $row && $labelParts !== []

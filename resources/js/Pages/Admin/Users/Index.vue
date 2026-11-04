@@ -41,7 +41,7 @@
 
 			<PColumn header="Email" field="email" />
 
-			<PColumn header="Mapped User">
+			<PColumn v-if="show_mapped_user" header="Mapped User">
 				<template #body="slotProps">
 					<span>{{ slotProps.data.mapped_user || '—' }}</span>
 				</template>
@@ -119,7 +119,11 @@ import { useConfirm } from 'primevue/useconfirm';
 
 const props = defineProps({
 	users: Object,
-	tenants: Array
+	tenants: Array,
+	show_mapped_user: {
+		type: Boolean,
+		default: true
+	}
 });
 
 const page = usePage();

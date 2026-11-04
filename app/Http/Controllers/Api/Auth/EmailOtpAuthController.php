@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Integrations\CrmApiClientResolver;
 use App\Integrations\FetchTenantIntegrationCrmUsers;
 use App\Mail\RenderedTemplateMail;
 use App\Models\EmailTemplate;
@@ -187,12 +188,14 @@ final class EmailOtpAuthController extends Controller
 
     private function otpSuccessUserPayload(User $user, ?Tenant $tenant): array
     {
+        $isMyCrmSync = $tenant !== null && CrmApiClientResolver::isMyCrmSyncTenant($tenant);
+
         $payload = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'tenant_id' => $user->tenant_id,
-            'intsysuser' => $user->intsysuser,
+            'intsysuser' => $isMyCrmSync ? null : $user->intsysuser,
             'userrole' => (string) ($user->roles->first()?->slug ?? ''),
         ];
 
@@ -210,6 +213,16 @@ final class EmailOtpAuthController extends Controller
     {
         if ($tenant === null) {
             return null;
+        }
+
+        if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
+            return [
+                'id' => (string) $user->id,
+                'name' => (string) $user->name,
+                'email' => (string) $user->email,
+                'phone' => '',
+                'role' => '',
+            ];
         }
 
         $externalId = $user->intsysuser;

@@ -191,6 +191,10 @@ const isMyCrmSyncIntegration = computed(
 		|| persistedIntegrationSlug.value === MYCRMSYNC_INTEGRATION_SLUG,
 );
 
+const persistedIsMyCrmSync = computed(
+	() => persistedIntegrationSlug.value === MYCRMSYNC_INTEGRATION_SLUG,
+);
+
 const crmUsers = ref([]);
 const crmUsersLoading = ref(false);
 const crmUsersError = ref('');
@@ -248,7 +252,7 @@ async function fetchCrmUsersFromPersistedIntegration() {
 }
 
 watch(activeTab, (t) => {
-	if (t === 'Manage Users') {
+	if (t === 'Manage Users' && !persistedIsMyCrmSync.value) {
 		void refreshTenantIntegrationPickers(null);
 	}
 });
@@ -417,7 +421,9 @@ const openAddUser = () => {
 	userForm.role = '';
 	userForm.roles = [];
 	userForm.tenant_id = props.tenant.id;
-	void refreshTenantIntegrationPickers(null);
+	if (!persistedIsMyCrmSync.value) {
+		void refreshTenantIntegrationPickers(null);
+	}
 };
 
 const openEditUser = (u) => {
@@ -432,7 +438,9 @@ const openEditUser = (u) => {
 	userForm.role = resolveUserRoleSlug(u);
 	userForm.roles = userForm.role ? [userForm.role] : [];
 	userForm.tenant_id = props.tenant.id;
-	void refreshTenantIntegrationPickers(u.id);
+	if (!persistedIsMyCrmSync.value) {
+		void refreshTenantIntegrationPickers(u.id);
+	}
 };
 
 const submitUserModal = () => {
@@ -442,7 +450,9 @@ const submitUserModal = () => {
 	userForm.email = String(userForm.email).trim();
 	userForm.roles = userForm.role ? [userForm.role] : [];
 
-	if (modalIntegratedOptions.value.length && !String(userForm.intsysuser ?? '').trim()) {
+	if (persistedIsMyCrmSync.value) {
+		userForm.intsysuser = null;
+	} else if (modalIntegratedOptions.value.length && !String(userForm.intsysuser ?? '').trim()) {
 		userIntegratedError.value = 'Integrated system user is required.';
 		return;
 	}
@@ -641,7 +651,10 @@ const deleteUser = (u) => {
 			<!-- Integration tab -->
 			<section v-show="activeTab === 'Integration'">
 				<div class="p-4">
-					<div class="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-10">
+					<div
+						class="grid gap-8 lg:items-start lg:gap-10"
+						:class="persistedIsMyCrmSync ? '' : 'lg:grid-cols-2'"
+					>
 						<!-- Left: credential form -->
 						<div class="min-w-0">
 							<form @submit.prevent="submitIntegrationTab" class="max-w-xl space-y-4">
@@ -732,8 +745,9 @@ const deleteUser = (u) => {
 							</form>
 						</div>
 
-						<!-- Right: integrated system users (connectors with CRM user listing) -->
+						<!-- Right: integrated system users (external CRMs only; MyCrmSync uses local users) -->
 						<div
+							v-if="!persistedIsMyCrmSync"
 							class="min-w-0 border-t border-gray-200 pt-8 lg:border-l lg:border-t-0 lg:border-gray-200 lg:pl-8 lg:pt-0"
 						>
 							<div class="flex flex-wrap items-start justify-between gap-3">
@@ -819,7 +833,7 @@ const deleteUser = (u) => {
 							<tr class="text-sm text-gray-600">
 								<th class="pb-2">Name</th>
 								<th class="pb-2">Email</th>
-								<th class="pb-2">Mapped User</th>
+								<th v-if="!persistedIsMyCrmSync" class="pb-2">Mapped User</th>
 								<th class="pb-2">Roles</th>
 								<th class="pb-2 w-28">Actions</th>
 							</tr>
@@ -828,7 +842,7 @@ const deleteUser = (u) => {
 							<tr v-for="u in users" :key="u.id" class="border-t">
 								<td class="py-2">{{ u.name }}</td>
 								<td class="py-2">{{ u.email }}</td>
-								<td class="py-2 text-sm text-gray-600">{{ mappedUserLabel(u) }}</td>
+								<td v-if="!persistedIsMyCrmSync" class="py-2 text-sm text-gray-600">{{ mappedUserLabel(u) }}</td>
 								<td class="py-2 text-sm text-gray-600">
 									{{ (u.roles || []).map(r => r.name).join(', ') }}
 								</td>
@@ -854,7 +868,7 @@ const deleteUser = (u) => {
 								</td>
 							</tr>
 							<tr v-if="users.length === 0">
-								<td colspan="5" class="py-4 text-sm text-gray-500">No users for this tenant.</td>
+								<td :colspan="persistedIsMyCrmSync ? 4 : 5" class="py-4 text-sm text-gray-500">No users for this tenant.</td>
 							</tr>
 						</tbody>
 					</table>
@@ -888,7 +902,7 @@ const deleteUser = (u) => {
 						<TextInput id="email" v-model="userForm.email" type="email" class="mt-1 block w-full" required />
 						<InputError class="mt-2" :message="userForm.errors.email" />
 					</div>
-					<div>
+					<div v-if="!persistedIsMyCrmSync">
 						<label for="intsysuser" class="block text-sm font-medium text-gray-700">
 							Integrated System User <span class="text-red-600">*</span>
 						</label>
