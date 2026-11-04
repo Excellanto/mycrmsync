@@ -27,10 +27,16 @@ final class ZohoCrmContactMapper
 
         $owner = data_get($row, 'Owner');
         $assignedTo = '';
+        $assignedToName = '';
         if (is_array($owner)) {
-            $assignedTo = trim((string) (data_get($owner, 'id') ?: data_get($owner, 'name') ?: ''));
+            $assignedTo = trim((string) data_get($owner, 'id', ''));
+            $assignedToName = trim((string) data_get($owner, 'name', ''));
+            if ($assignedTo === '') {
+                $assignedTo = $assignedToName;
+            }
         } elseif (is_string($owner)) {
             $assignedTo = trim($owner);
+            $assignedToName = $assignedTo;
         }
 
         $firstName = trim((string) data_get($row, 'First_Name', ''));
@@ -53,6 +59,7 @@ final class ZohoCrmContactMapper
             source: trim((string) data_get($row, 'Lead_Source', '')),
             type: trim((string) data_get($row, 'Contact_Type', '')),
             assignedTo: $assignedTo,
+            assignedToName: $assignedToName,
             city: trim((string) data_get($row, 'Mailing_City', '')),
             state: trim((string) data_get($row, 'Mailing_State', '')),
             postalCode: trim((string) data_get($row, 'Mailing_Zip', '')),

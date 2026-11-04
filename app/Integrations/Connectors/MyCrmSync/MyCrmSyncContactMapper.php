@@ -32,6 +32,7 @@ final class MyCrmSyncContactMapper
             source: trim((string) $contact->source),
             type: trim((string) $contact->type),
             assignedTo: $contact->assigned_to !== null ? (string) $contact->assigned_to : '',
+            assignedToName: trim((string) ($contact->assignedUser?->name ?? '')),
             city: trim((string) $contact->city),
             state: trim((string) $contact->state),
             postalCode: trim((string) $contact->postal_code),

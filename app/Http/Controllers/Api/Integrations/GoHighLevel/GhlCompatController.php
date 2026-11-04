@@ -47,6 +47,7 @@ final class GhlCompatController extends Controller
      * @queryParam user_id int required Must match the authenticated user (same as OTP verify response). Example: 1
      * @queryParam limit int Optional. Page size 1–100.
      * @queryParam assigned_to int Optional. **MyCrmSync:** local user id. Returns only contacts assigned to that user. `assignedTo` is accepted as an alias. Example: 42
+     * @queryParam assigned_to_name string Optional. Full assignee name, letter case ignored. MyCrmSync matches a local user. Zoho matches the CRM owner. GoHighLevel matches a location user. `assignedToName` is an alias. Example: Jane Doe
      * @queryParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: activity
      * @queryParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc` (defaults: `asc` for name, `desc` otherwise). Example: desc
      * @queryParam fields string Optional. **Zoho only:** comma-separated Zoho Contacts API field names (max 50). Defaults to fields required for MysimConnect’s normalized contact shape. Example: First_Name,Last_Name,Email
@@ -64,6 +65,7 @@ final class GhlCompatController extends Controller
             'sortBy' => ['nullable', 'string', 'in:name,date_added,activity'],
             'sortDir' => ['nullable', 'string', 'in:asc,desc'],
         ]);
+        $this->assertAssigneeName($request);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
             $this->assertMyCrmSyncAssignee($request, $tenant);
@@ -94,6 +96,7 @@ final class GhlCompatController extends Controller
      * @bodyParam query string Optional. Example: jane@example.com
      * @bodyParam pageLimit int Optional. Example: 20
      * @bodyParam assigned_to int Optional. **MyCrmSync:** local user id. Returns only contacts assigned to that user. `assignedTo` is accepted as an alias. Example: 42
+     * @bodyParam assigned_to_name string Optional. Full assignee name, letter case ignored. MyCrmSync matches a local user. Zoho matches the CRM owner. GoHighLevel matches a location user. `assignedToName` is an alias. Example: Jane Doe
      * @bodyParam sort_by string Optional. **MyCrmSync:** `name`, `date_added` (default), or `activity` (latest contact note). Example: name
      * @bodyParam sort_dir string Optional. **MyCrmSync:** `asc` or `desc`. Example: asc
      * @bodyParam fields string Optional. **Zoho only:** comma-separated Contacts field API names forwarded to `/Contacts/search`. Example: First_Name,Last_Name,Email
@@ -112,6 +115,7 @@ final class GhlCompatController extends Controller
             'sortBy' => ['nullable', 'string', 'in:name,date_added,activity'],
             'sortDir' => ['nullable', 'string', 'in:asc,desc'],
         ]);
+        $this->assertAssigneeName($request);
 
         if (CrmApiClientResolver::isMyCrmSyncTenant($tenant)) {
             $this->assertMyCrmSyncAssignee($request, $tenant);
@@ -944,6 +948,26 @@ final class GhlCompatController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * List and search accept the assignee's full name for every integration.
+     */
+    private function assertAssigneeName(Request $request): void
+    {
+        $data = $request->validate([
+            'assigned_to_name' => ['nullable', 'string', 'max:255'],
+            'assignedToName' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $primary = trim((string) ($data['assigned_to_name'] ?? ''));
+        $alias = trim((string) ($data['assignedToName'] ?? ''));
+
+        if ($primary !== '' && $alias !== '' && mb_strtolower($primary, 'UTF-8') !== mb_strtolower($alias, 'UTF-8')) {
+            throw ValidationException::withMessages([
+                'assigned_to_name' => ['assigned_to_name and assignedToName must be the same name.'],
+            ]);
+        }
     }
 
     /**

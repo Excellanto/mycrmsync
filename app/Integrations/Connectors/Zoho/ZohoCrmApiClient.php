@@ -2,6 +2,7 @@
 
 namespace App\Integrations\Connectors\Zoho;
 
+use App\Integrations\AssigneeName;
 use App\Models\Tenant;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -23,6 +24,12 @@ final class ZohoCrmApiClient
      */
     public function listContacts(Tenant $tenant, array $query = []): array
     {
+        $assigneeName = AssigneeName::from($query);
+
+        if ($assigneeName !== '') {
+            return $this->contactsForAssigneeName($tenant, $query, $assigneeName);
+        }
+
         $response = $this->request($tenant, 'GET', '/Contacts', $this->contactListQuery($query));
         $json = $this->successfulJson($response);
 
@@ -35,8 +42,14 @@ final class ZohoCrmApiClient
      */
     public function searchContacts(Tenant $tenant, array $body = []): array
     {
-        $query = $this->contactListQuery($body);
+        $assigneeName = AssigneeName::from($body);
         $term = trim((string) ($body['query'] ?? $body['search'] ?? $body['q'] ?? ''));
+
+        if ($assigneeName !== '') {
+            return $this->contactsForAssigneeName($tenant, $body, $assigneeName, $term);
+        }
+
+        $query = $this->contactListQuery($body);
 
         if ($term === '') {
             return $this->listContacts($tenant, $query);
@@ -436,6 +449,72 @@ final class ZohoCrmApiClient
         $json = $response->json();
 
         return is_array($json) ? $json : [];
+    }
+
+    /**
+     * Zoho list records cannot filter by owner. Search criteria can.
+     *
+     * @param  array<string, mixed>  $source
+     * @return array{0: array<string, mixed>, 1: int}
+     */
+    private function contactsForAssigneeName(Tenant $tenant, array $source, string $name, string $term = ''): array
+    {
+        $ownerIds = AssigneeName::matchingIds($this->zohoUsers($tenant), $name);
+
+        if ($ownerIds === []) {
+            return [[
+                'contacts' => [],
+                'meta' => ['count' => 0, 'more_records' => false],
+            ], 200];
+        }
+
+        $query = $this->contactListQuery($source);
+        $query['criteria'] = AssigneeName::zohoOwnerCriteria($ownerIds, $term);
+        $response = $this->request($tenant, 'GET', '/Contacts/search', $query);
+
+        if ($response->status() === 204) {
+            return [[
+                'contacts' => [],
+                'meta' => ['count' => 0, 'more_records' => false],
+            ], 200];
+        }
+
+        $json = $this->successfulJson($response);
+
+        return [$this->contactsEnvelope($json), $response->status()];
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function zohoUsers(Tenant $tenant): array
+    {
+        $users = [];
+        $page = 1;
+
+        do {
+            [$payload] = $this->listUsers($tenant, [
+                'type' => 'AllUsers',
+                'page' => $page,
+                'per_page' => 200,
+            ]);
+
+            foreach ($payload['users'] ?? [] as $user) {
+                if (! is_array($user)) {
+                    continue;
+                }
+
+                $users[] = [
+                    'id' => trim((string) ($user['id'] ?? '')),
+                    'name' => trim((string) ($user['name'] ?? '')),
+                ];
+            }
+
+            $more = (bool) data_get($payload, 'meta.more_records', false);
+            $page++;
+        } while ($more && $page <= 10);
+
+        return $users;
     }
 
     /**

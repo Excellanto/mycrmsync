@@ -2,6 +2,7 @@
 
 namespace App\Services\Contacts;
 
+use App\Integrations\AssigneeName;
 use App\Models\Contact;
 use App\Models\ContactNote;
 use App\Models\ContactReminder;
@@ -53,13 +54,14 @@ final class ContactService
      * Filters shared by MyCrmSync contact list and search so the page and `meta.total` match.
      *
      * @param  array<string, mixed>  $params
-     * @return array{search: string, assigned_to: int|null, tag: mixed}
+     * @return array{search: string, assigned_to: int|null, assigned_to_name: string, tag: mixed}
      */
     public function apiListingFilters(array $params): array
     {
         return [
             'search' => trim((string) ($params['query'] ?? '')),
             'assigned_to' => $this->assigneeId($params),
+            'assigned_to_name' => AssigneeName::from($params),
             'tag' => $params['tag'] ?? null,
         ];
     }
@@ -439,6 +441,14 @@ final class ContactService
 
         if (! empty($filters['assigned_to'])) {
             $query->where('assigned_to', (int) $filters['assigned_to']);
+        }
+
+        $assigneeName = trim((string) ($filters['assigned_to_name'] ?? ''));
+
+        if ($assigneeName !== '') {
+            $query->whereHas('assignedUser', function (Builder $assigned) use ($assigneeName): void {
+                $assigned->whereRaw('lower(trim(name)) = lower(?)', [$assigneeName]);
+            });
         }
 
         $tag = trim((string) ($filters['tag'] ?? ''));

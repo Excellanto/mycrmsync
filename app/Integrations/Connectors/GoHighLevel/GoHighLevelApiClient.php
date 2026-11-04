@@ -2,14 +2,21 @@
 
 namespace App\Integrations\Connectors\GoHighLevel;
 
+use App\Integrations\AssigneeName;
 use App\Models\Integration;
 use App\Models\Tenant;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 final class GoHighLevelApiClient
 {
+    /** @var list<array{id: string, name: string}>|null */
+    private ?array $locationUsers = null;
+
+    private ?int $locationUsersTenantId = null;
+
     public function __construct(
         private GoHighLevelContactMapper $contactMapper = new GoHighLevelContactMapper,
     ) {}
@@ -20,10 +27,17 @@ final class GoHighLevelApiClient
      */
     public function listContacts(Tenant $tenant, array $query = []): array
     {
+        $assigneeName = AssigneeName::from($query);
+        unset($query['assigned_to_name'], $query['assignedToName']);
+
+        if ($assigneeName !== '') {
+            return $this->searchByAssigneeName($tenant, $query, $assigneeName);
+        }
+
         $response = $this->request($tenant, 'GET', '/contacts/', $query);
         $json = $this->successfulJson($response);
 
-        return [$this->contactMapper->contactsEnvelopeFromResponse($json), $response->status()];
+        return [$this->withAssigneeNames($tenant, $this->contactMapper->contactsEnvelopeFromResponse($json)), $response->status()];
     }
 
     /**
@@ -32,10 +46,17 @@ final class GoHighLevelApiClient
      */
     public function searchContacts(Tenant $tenant, array $body = []): array
     {
+        $assigneeName = AssigneeName::from($body);
+        unset($body['assigned_to_name'], $body['assignedToName']);
+
+        if ($assigneeName !== '') {
+            return $this->searchByAssigneeName($tenant, $body, $assigneeName);
+        }
+
         $response = $this->request($tenant, 'POST', '/contacts/search', json: $body);
         $json = $this->successfulJson($response);
 
-        return [$this->contactMapper->contactsEnvelopeFromResponse($json), $response->status()];
+        return [$this->withAssigneeNames($tenant, $this->contactMapper->contactsEnvelopeFromResponse($json)), $response->status()];
     }
 
     /**
@@ -330,6 +351,150 @@ final class GoHighLevelApiClient
         }
 
         return $id;
+    }
+
+    /**
+     * GoHighLevel contact list has no assignee filter. Search does.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{0: array<string, mixed>, 1: int}
+     */
+    private function searchByAssigneeName(Tenant $tenant, array $body, string $name): array
+    {
+        $users = $this->locationUsers($tenant);
+        $ids = AssigneeName::matchingIds($users, $name);
+
+        if ($ids === []) {
+            return [[
+                'contacts' => [],
+                'meta' => ['total' => 0, 'count' => 0],
+            ], 200];
+        }
+
+        $pageLimit = $body['pageLimit'] ?? $body['limit'] ?? 20;
+        $page = filter_var($body['page'] ?? null, FILTER_VALIDATE_INT);
+        $existing = $body['filters'] ?? [];
+        $payload = [
+            'locationId' => trim((string) ($body['locationId'] ?? '')) ?: $this->defaultLocationId($tenant),
+            'page' => is_int($page) && $page > 0 ? $page : 1,
+            'pageLimit' => min(max((int) $pageLimit, 1), 100),
+            'filters' => array_values(array_filter([
+                AssigneeName::goHighLevelAssigneeFilter($ids),
+                ...(is_array($existing) ? $existing : []),
+            ])),
+        ];
+
+        $query = trim((string) ($body['query'] ?? ''));
+
+        if ($query !== '') {
+            $payload['query'] = $query;
+        }
+
+        $response = $this->request(
+            $tenant,
+            'POST',
+            '/contacts/search',
+            json: $payload,
+            versionOverride: '2021-07-28',
+        );
+        $json = $this->successfulJson($response);
+
+        return [
+            $this->withAssigneeNames($tenant, $this->contactMapper->contactsEnvelopeFromResponse($json), $users),
+            $response->status(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $envelope
+     * @param  list<array{id: string, name: string}>|null  $users
+     * @return array<string, mixed>
+     */
+    private function withAssigneeNames(Tenant $tenant, array $envelope, ?array $users = null): array
+    {
+        $contacts = $envelope['contacts'] ?? null;
+
+        if (! is_array($contacts)) {
+            return $envelope;
+        }
+
+        try {
+            $users ??= $this->locationUsers($tenant);
+        } catch (Throwable $e) {
+            report($e);
+
+            return $envelope;
+        }
+
+        $names = [];
+
+        foreach ($users as $user) {
+            $id = trim((string) ($user['id'] ?? ''));
+
+            if ($id !== '') {
+                $names[$id] = trim((string) ($user['name'] ?? ''));
+            }
+        }
+
+        foreach ($contacts as $index => $contact) {
+            if (! is_array($contact)) {
+                continue;
+            }
+
+            $id = trim((string) ($contact['assignedTo'] ?? ''));
+            $contacts[$index]['assignedToName'] = $id !== '' ? ($names[$id] ?? '') : '';
+        }
+
+        $envelope['contacts'] = $contacts;
+
+        return $envelope;
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function locationUsers(Tenant $tenant): array
+    {
+        if ($this->locationUsers !== null && $this->locationUsersTenantId === $tenant->id) {
+            return $this->locationUsers;
+        }
+
+        $response = $this->request($tenant, 'GET', '/users/', [
+            'locationId' => $this->defaultLocationId($tenant),
+        ]);
+        $json = $this->successfulJson($response);
+        $rows = data_get($json, 'users');
+
+        if (! is_array($rows)) {
+            $rows = data_get($json, 'data', []);
+        }
+
+        $users = [];
+
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $id = trim((string) data_get($row, 'id', ''));
+
+            if ($id === '') {
+                continue;
+            }
+
+            $name = trim((string) data_get($row, 'name', ''));
+
+            if ($name === '') {
+                $name = trim(trim((string) data_get($row, 'firstName', '')).' '.trim((string) data_get($row, 'lastName', '')));
+            }
+
+            $users[] = ['id' => $id, 'name' => $name];
+        }
+
+        $this->locationUsersTenantId = $tenant->id;
+        $this->locationUsers = $users;
+
+        return $users;
     }
 
     /**
